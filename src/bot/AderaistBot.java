@@ -36,20 +36,19 @@ public class AderaistBot implements Brain
 		return nextDirection;
 	}
 
-	private boolean goingEast(Position ph, Position pf)
+	private boolean goingEast(Position fruitPosition)
 	{
-		if(pf.getX() > ph.getX())
-			return true;
-
-		return false;
+		return fruitPosition.getX() > self.getHeadPosition().getX();
+	}
+	
+	private boolean goingWest(Position fruitPosition)
+	{
+		return fruitPosition.getX() < self.getHeadPosition().getX();
 	}
 
-	private boolean goingNorth(Position ph, Position pf)
+	private boolean goingNorth(Position fruitPosition)
 	{
-		if(pf.getY() < ph.getY())
-			return true;
-
-		return false;
+		return fruitPosition.getY() < self.getHeadPosition().getY();
 	}
 
 	private Position getClosestFruit(List<Position> fruits)
@@ -71,12 +70,12 @@ public class AderaistBot implements Brain
 
 	private Direction getDirectionToClosesFruit(List<Position> fruits)
 	{
-		Position pos = getClosestFruit(fruits);
-		if(goingNorth(self.getHeadPosition(), pos) && self.getCurrentDirection() != Direction.SOUTH)
+		Position fruitPosition = getClosestFruit(fruits);
+		if(goingNorth(fruitPosition) && self.getCurrentDirection() != Direction.SOUTH)
 			return Direction.NORTH;
-		else if(goingEast(self.getHeadPosition(), pos) && self.getCurrentDirection() != Direction.WEST)
+		else if(goingEast(fruitPosition) && self.getCurrentDirection() != Direction.WEST)
 			return Direction.EAST;
-		else if(!goingEast(self.getHeadPosition(), pos) && self.getCurrentDirection() != Direction.EAST)
+		else if(goingWest(fruitPosition) && self.getCurrentDirection() != Direction.EAST)
 			return Direction.WEST;
 		return Direction.SOUTH;
 	}
@@ -86,29 +85,34 @@ public class AderaistBot implements Brain
 		List<Position> futurePositionsOfOtherSnakesHeads = new ArrayList<Position>();
 		Set<Snake> snakes = gamestate.getSnakes();
 		for(Snake snake : snakes)
+		{
 			if(!snake.getHeadPosition().equals(self.getHeadPosition()))
-				futurePositionsOfOtherSnakesHeads.add(calculateFuturePosition(snake));
-		final Position ourFuturePosition = calculateFuturePosition(self);
+			{
+				futurePositionsOfOtherSnakesHeads.add(calculateFuturePosition(snake, 1));
+				futurePositionsOfOtherSnakesHeads.add(calculateFuturePosition(snake, 2));
+			}
+		}
+		final Position ourFuturePosition = calculateFuturePosition(self, 1);
 		for(Position position : futurePositionsOfOtherSnakesHeads)
 			if(ourFuturePosition.equals(position))
 				return true;
 		return false;
 	}
 
-	private Position calculateFuturePosition(Snake snake)
+	private Position calculateFuturePosition(Snake snake, final int steps)
 	{
 		Direction direction = snake.getCurrentDirection();
 		Position currentHeadPosition = snake.getHeadPosition();
 		switch(direction)
 		{
 			case WEST:
-				return new Position(currentHeadPosition.getX() - 1, currentHeadPosition.getY());
+				return new Position(currentHeadPosition.getX() - steps, currentHeadPosition.getY());
 			case EAST:
-				return new Position(currentHeadPosition.getX() + 1, currentHeadPosition.getY());
+				return new Position(currentHeadPosition.getX() + steps, currentHeadPosition.getY());
 			case NORTH:
-				return new Position(currentHeadPosition.getX(), currentHeadPosition.getY() - 1);
+				return new Position(currentHeadPosition.getX(), currentHeadPosition.getY() - steps);
 			case SOUTH:
-				return new Position(currentHeadPosition.getX(), currentHeadPosition.getY() + 1);
+				return new Position(currentHeadPosition.getX(), currentHeadPosition.getY() + steps);
 		}
 		return currentHeadPosition;
 	}
