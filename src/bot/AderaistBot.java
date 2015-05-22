@@ -16,39 +16,23 @@ public class AderaistBot implements Brain
 	private GameState gamestate;
 	private Snake self;
 
-	private Direction lastDirection;
+	private Direction nextDirection;
 	
 	@Override
 	public Direction getNextMove(Snake self, GameState gamestate)
 	{
 		this.self = self;
-		Direction nextDirection = self.getCurrentDirection();
+		this.gamestate = gamestate;
+		this.nextDirection = self.getCurrentDirection();
 
 		List<Position> fruits = gamestate.getFruits();
 		if(fruits.size() > 0)
 			nextDirection = getDirectionToClosesFruit(fruits);
 		
-		if(gamestate.willCollide(self, nextDirection))
-			return nextTurn(gamestate, self);
-		else if(willColideTwoTurnsFromNow(gamestate, self))
-			return nextTurn(gamestate, self);
+		if(willCollide(nextDirection, 2))
+			return nextTurn();
 
 		return nextDirection;
-	}
-
-	private boolean goingEast(Position fruitPosition)
-	{
-		return fruitPosition.getX() > self.getHeadPosition().getX();
-	}
-	
-	private boolean goingWest(Position fruitPosition)
-	{
-		return fruitPosition.getX() < self.getHeadPosition().getX();
-	}
-
-	private boolean goingNorth(Position fruitPosition)
-	{
-		return fruitPosition.getY() < self.getHeadPosition().getY();
 	}
 
 	private Position getClosestFruit(List<Position> fruits)
@@ -70,29 +54,37 @@ public class AderaistBot implements Brain
 
 	private Direction getDirectionToClosesFruit(List<Position> fruits)
 	{
-		Position fruitPosition = getClosestFruit(fruits);
-		if(goingNorth(fruitPosition) && self.getCurrentDirection() != Direction.SOUTH)
-			return Direction.NORTH;
-		else if(goingEast(fruitPosition) && self.getCurrentDirection() != Direction.WEST)
-			return Direction.EAST;
-		else if(goingWest(fruitPosition) && self.getCurrentDirection() != Direction.EAST)
-			return Direction.WEST;
-		return Direction.SOUTH;
+		Position closestFruitPosition = getClosestFruit(fruits);
+		List<Direction> wayToFruit = GameState.getRelativeDirections(self.getHeadPosition(), closestFruitPosition);
+		Direction directionToFruit = wayToFruit.get(0);
+		if(directionIsOppositeToCurrentDirection(directionToFruit))
+			directionToFruit = wayToFruit.get(1);
+		return directionToFruit;
 	}
 
-	private boolean willColideTwoTurnsFromNow(GameState gamestate, Snake self)
+	private boolean directionIsOppositeToCurrentDirection(Direction direction)
+	{
+		if(nextDirection.equals(Direction.WEST) && direction.equals(Direction.EAST))
+			return true;
+		if(nextDirection.equals(Direction.EAST) && direction.equals(Direction.WEST))
+			return true;
+		if(nextDirection.equals(Direction.NORTH) && direction.equals(Direction.SOUTH))
+			return true;
+		if(nextDirection.equals(Direction.SOUTH) && direction.equals(Direction.NORTH))
+			return true;
+		return false;
+	}
+
+	private boolean willCollideInTheFuture(final int steps)
 	{
 		List<Position> futurePositionsOfOtherSnakesHeads = new ArrayList<Position>();
 		Set<Snake> snakes = gamestate.getSnakes();
 		for(Snake snake : snakes)
 		{
 			if(!snake.getHeadPosition().equals(self.getHeadPosition()))
-			{
-				futurePositionsOfOtherSnakesHeads.add(calculateFuturePosition(snake, 1));
-				futurePositionsOfOtherSnakesHeads.add(calculateFuturePosition(snake, 2));
-			}
+				futurePositionsOfOtherSnakesHeads.add(calculateFuturePosition(snake, steps));
 		}
-		final Position ourFuturePosition = calculateFuturePosition(self, 1);
+		final Position ourFuturePosition = calculateFuturePosition(self, steps);
 		for(Position position : futurePositionsOfOtherSnakesHeads)
 			if(ourFuturePosition.equals(position))
 				return true;
@@ -117,14 +109,31 @@ public class AderaistBot implements Brain
 		return currentHeadPosition;
 	}
 
-	private Direction nextTurn(GameState gamestate, Snake self)
+	private Direction nextTurn()
 	{
-		if(!gamestate.willCollide(self, Direction.EAST))
-			return Direction.EAST;
-		if(!gamestate.willCollide(self, Direction.NORTH))
-			return Direction.NORTH;
-		if(!gamestate.willCollide(self, Direction.SOUTH))
-			return Direction.SOUTH;
-		return Direction.WEST;
+		for(Direction direction:Direction.values())
+			if(isSafeDirection(direction))
+				return direction;
+		return Direction.SOUTH;
+	}
+	
+	private boolean isSafeDirection(Direction direction)
+	{
+		return !willCollide(direction) && !directionIsOppositeToCurrentDirection(direction);
+	}
+	
+	private boolean willCollide(Direction direction)
+	{
+		return gamestate.willCollide(self, direction);
+	}
+	
+	private boolean willCollide(Direction direction, int turns)
+	{
+		if(willCollide(direction))
+			return true;
+		while(turns-- > 1)
+			if(willCollideInTheFuture(turns))
+				return true;
+		return false;
 	}
 }
