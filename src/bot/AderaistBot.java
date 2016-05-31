@@ -41,8 +41,6 @@ public class AderaistBot implements Brain
 		
 		if(willCollide(nextDirection))
 			return nextTurn();
-		
-		System.out.println(safestDirection);
 
 		return nextDirection;
 	}
@@ -89,6 +87,9 @@ public class AderaistBot implements Brain
 
 	private int turnsUntilCollision(Direction direction, int turns, Set<Position> lethalObstacles)
 	{
+		if(turns < 1)
+			throw new IllegalArgumentException();
+		
 		if(turns == 16)
 			return turns;
 		
@@ -141,7 +142,7 @@ public class AderaistBot implements Brain
 		Board board = gamestate.getBoard();
 		if(position.getX() < 1 || position.getY() < 1)
 			return true;
-		if(position.getX() >= board.getWidth() || position.getY() >= board.getHeight())
+		if(position.getX() >= board.getWidth() - 1 || position.getY() >= board.getHeight() -1)
 			return true;
 		return false;
 	}
