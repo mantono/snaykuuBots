@@ -151,7 +151,7 @@ public class AderaistBot implements Brain
 	{
 		for(Direction dir : Direction.values())
 		{
-			final int turns = turnsUntilCollision(dir, 0, new HashSet<Position>(128));
+			final int turns = turnsUntilCollision(dir, 1, new HashSet<Position>(128));
 			safestDirection.put(dir, turns);
 		}
 		
@@ -173,6 +173,6 @@ public class AderaistBot implements Brain
 	
 	private boolean willCollide(Direction direction)
 	{
-		return turnsUntilCollision(direction, 0, new HashSet<Position>(128)) < 3;
+		return turnsUntilCollision(direction, 1, new HashSet<Position>(128)) < 3;
 	}
 }
