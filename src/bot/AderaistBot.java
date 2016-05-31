@@ -1,8 +1,9 @@
 package bot;
 
-import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import gameLogic.Board;
@@ -11,14 +12,21 @@ import gameLogic.Direction;
 import gameLogic.GameState;
 import gameLogic.Position;
 import gameLogic.Snake;
+import javafx.geometry.Pos;
 
 public class AderaistBot implements Brain
 {
 
 	private GameState gamestate;
 	private Snake self;
+	private Map<Direction, Integer> safestDirection;
 
 	private Direction nextDirection;
+	
+	public AderaistBot()
+	{
+		this.safestDirection = new EnumMap<Direction, Integer>(Direction.class);
+	}
 	
 	@Override
 	public Direction getNextMove(Snake self, GameState gamestate)
@@ -31,8 +39,10 @@ public class AderaistBot implements Brain
 		if(fruits.size() > 0)
 			nextDirection = getDirectionToClosesFruit(fruits);
 		
-		if(willCollide(nextDirection, 3))
+		if(willCollide(nextDirection))
 			return nextTurn();
+		
+		System.out.println(safestDirection);
 
 		return nextDirection;
 	}
@@ -52,7 +62,7 @@ public class AderaistBot implements Brain
 			}
 		}
 		return closestFruit;
-	} // getClosestFruit
+	}
 
 	private Direction getDirectionToClosesFruit(List<Position> fruits)
 	{
@@ -77,17 +87,53 @@ public class AderaistBot implements Brain
 		return false;
 	}
 
-	private boolean willCollideInTheFuture(final int steps)
+	private int turnsUntilCollision(Direction direction, int turns, Set<Position> lethalObstacles)
 	{
-		final Position ourFuturePosition = calculateFuturePosition(self, steps);
-		if(outOfBounds(ourFuturePosition))
-			return true;
-		if(isTrap(ourFuturePosition))
-			return true;
-		Set<Position> lethalObstacles = getSnakeHeads(steps);
-		if(lethalObstacles.contains(ourFuturePosition))
-			return true;
-		return false;
+		if(turns == 16)
+			return turns;
+		
+		if(directionIsOppositeToCurrentDirection(direction))
+			return -1;
+		
+		Set<Snake> snakes = gamestate.getSnakes();
+		
+		if(lethalObstacles.isEmpty())
+		{
+			for(Snake snake : snakes)
+				lethalObstacles.addAll(snake.getSegments());
+		}
+		
+		for(Snake snake : snakes)
+		{
+			if(snake.equals(self) || snake.isDead())
+				continue;
+			Position futurePosition = getFuturePosition(snake, turns);
+			lethalObstacles.add(futurePosition);
+		}
+		
+		Position myFuturePosition =	getFuturePosition(direction, self, turns);
+		
+		if(lethalObstacles.contains(myFuturePosition))
+			return turns;
+		
+		if(outOfBounds(myFuturePosition))
+			return turns;
+		
+		return turnsUntilCollision(direction, ++turns, lethalObstacles);
+	}
+
+	private Position getFuturePosition(Snake snake, int turns)
+	{
+		return getFuturePosition(snake.getCurrentDirection(), snake, turns);
+	}
+	
+	private Position getFuturePosition(Direction direction, Snake snake, int turns)
+	{
+		Position origin = snake.getHeadPosition();
+		Position vector = direction.getDirectionVector();
+		final int x = origin.getX()+vector.getX()*turns;
+		final int y = origin.getY()+vector.getY()*turns;
+		return new Position(x, y);
 	}
 
 	private boolean outOfBounds(Position position)
@@ -100,77 +146,32 @@ public class AderaistBot implements Brain
 		return false;
 	}
 
-	private boolean isTrap(Position ourFuturePosition)
-	{
-		List<Position> neighbours = ourFuturePosition.getNeighbours();
-		int lethalNeighbours = 0;
-		Board board = gamestate.getBoard();
-		for(Position square:neighbours)
-		{
-			if(!outOfBounds(square))
-				if(board.isLethal(square))
-					lethalNeighbours++;
-		}
-		return lethalNeighbours >= 2;
-	}
-
-	private Set<Position> getSnakeHeads(final int steps)
-	{
-		Set<Snake> snakes = gamestate.getSnakes();
-		Set<Position> snakeHeads = new HashSet<Position>(snakes.size()*2);
-		for(Snake snake : snakes)
-		{
-			if(!snake.getHeadPosition().equals(self.getHeadPosition()))
-				snakeHeads.add(calculateFuturePosition(snake, steps));
-		}
-		return snakeHeads;
-	}
-
-	private Position calculateFuturePosition(Snake snake, final int steps)
-	{
-		Direction direction = snake.getCurrentDirection();
-		Position headPosition = snake.getHeadPosition();
-		switch(direction)
-		{
-			case WEST:
-				headPosition = new Position(snake.getHeadPosition().getX() - steps, headPosition.getY());
-			case EAST:
-				headPosition = new Position(headPosition.getX() + steps, headPosition.getY());
-			case NORTH:
-				headPosition = new Position(headPosition.getX(), headPosition.getY() - steps);
-			case SOUTH:
-				headPosition = new Position(headPosition.getX(), headPosition.getY() + steps);
-		}
-		if(!outOfBounds(headPosition))
-			return headPosition;
-		return snake.getHeadPosition();
-	}
-
 	private Direction nextTurn()
 	{
-		for(Direction direction:Direction.values())
-			if(isSafeDirection(direction))
-				return direction;
-		return Direction.SOUTH;
-	}
-	
-	private boolean isSafeDirection(Direction direction)
-	{
-		return !willCollide(direction) && !directionIsOppositeToCurrentDirection(direction);
+		for(Direction dir : Direction.values())
+		{
+			final int turns = turnsUntilCollision(dir, 0, new HashSet<Position>(128));
+			safestDirection.put(dir, turns);
+		}
+		
+		int longest = -1;
+		Direction safest = Direction.SOUTH;
+		
+		for(Direction dir : Direction.values())
+		{
+			int distance = safestDirection.get(dir); 
+			if(distance > longest)
+			{
+				longest = distance;
+				safest = dir;
+			}
+		}
+		
+		return safest;
 	}
 	
 	private boolean willCollide(Direction direction)
 	{
-		return gamestate.willCollide(self, direction);
-	}
-	
-	private boolean willCollide(Direction direction, int turns)
-	{
-		if(willCollide(direction))
-			return true;
-		while(turns-- > 1)
-			if(willCollideInTheFuture(turns))
-				return true;
-		return false;
+		return turnsUntilCollision(direction, 0, new HashSet<Position>(128)) < 3;
 	}
 }
