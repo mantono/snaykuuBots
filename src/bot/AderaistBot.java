@@ -36,6 +36,7 @@ public class AderaistBot implements Brain
 		this.self = self;
 		this.gamestate = gamestate;
 		this.nextDirection = self.getCurrentDirection();
+		this.safestDirection.clear();
 
 		List<Position> fruits = gamestate.getFruits();
 		if(fruits.size() > 0)
