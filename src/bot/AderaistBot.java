@@ -89,6 +89,19 @@ public class AderaistBot implements Brain
 			return true;
 		return false;
 	}
+	
+	private boolean directionIsOpposite(Direction lhs, Direction rhs)
+	{
+		if(lhs.equals(Direction.WEST) && rhs.equals(Direction.EAST))
+			return true;
+		if(lhs.equals(Direction.EAST) && rhs.equals(Direction.WEST))
+			return true;
+		if(lhs.equals(Direction.NORTH) && rhs.equals(Direction.SOUTH))
+			return true;
+		if(lhs.equals(Direction.SOUTH) && rhs.equals(Direction.NORTH))
+			return true;
+		return false;
+	}
 
 	private int turnsUntilCollision(Direction direction, int turns, Set<Position> lethalObstacles, int max_depth)
 	{
@@ -119,7 +132,14 @@ public class AderaistBot implements Brain
 		if(outOfBounds(myFuturePosition))
 			return turns;
 		
-		return turnsUntilCollision(direction, ++turns, lethalObstacles, max_depth);
+		int bestTurn = -1;
+		for (Direction dir : Direction.values()){
+			int currTurn = turnsUntilCollision(dir, turns+1, lethalObstacles, max_depth);
+			if (bestTurn < currTurn) //&& !directionIsOpposite(dir, direction))
+				bestTurn = currTurn;
+		}
+		
+		return bestTurn; //turnsUntilCollision(direction, ++turns, lethalObstacles, max_depth);
 	}
 	
 	private void fillWithFuturePositions(Collection<Snake> snakes, 
