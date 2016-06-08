@@ -55,9 +55,9 @@ public class FruitFinder implements Brain
 
 		double scoreForward, scoreLeft, scoreRight;
 		scoreForward = scoreRight = scoreLeft = 0;
-		
+
 		LinkedList<Position> snake = self.getSegments();
-		
+
 		if(fruitDirection.equals(currentDirection.turnLeft()))
 		{
 			scoreLeft = getScore(currentPosition, snake, currentDirection.turnLeft(), 0, 1);
@@ -76,7 +76,7 @@ public class FruitFinder implements Brain
 			scoreRight = getScore(currentPosition, snake, currentDirection.turnRight(), 0, 1);
 			scoreLeft = getScore(currentPosition, snake, currentDirection.turnLeft(), 0, 1);
 		}
-		
+
 		if(scoreLeft == scoreRight && scoreRight == scoreForward)
 			return fruitDirection;
 
@@ -88,10 +88,10 @@ public class FruitFinder implements Brain
 	}
 
 	private Direction directionToHighestRankingFruit()
-	{		
+	{
 		if(fruitRanking.isEmpty() || fruitRanking.lastKey() < 0)
 			return self.getCurrentDirection();
-		
+
 		final double bestScore = fruitRanking.lastKey();
 		final Position bestFruit = fruitRanking.get(bestScore);
 		return getDirectionTo(bestFruit);
@@ -101,19 +101,19 @@ public class FruitFinder implements Brain
 	{
 		if(computationTimeLeft() < 10 || depth == MAX_DEPTH)
 			return score;
-		
-		final Position nextPosition = currentDirection.calculateNextPosition(currentPosition); 
-		
+
+		final Position nextPosition = currentDirection.calculateNextPosition(currentPosition);
+
 		if(state.getBoard().isLethal(nextPosition))
 			return score;
 		if(snake.contains(nextPosition))
 			return score;
 		else
 			score++;
-		
+
 		if(state.getBoard().getSquare(nextPosition).hasFruit())
-			score += 200/depth;
-		
+			score += 200 / depth;
+
 		snake.addFirst(nextPosition);
 		if(!snakeWillGrow())
 			snake.removeLast();
@@ -121,7 +121,7 @@ public class FruitFinder implements Brain
 		final double scoreForward = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection, score, depth+1);
 		final double scoreLeft = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection.turnLeft(), score, depth+1);
 		final double scoreRight = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection.turnRight(), score, depth+1);
-		
+
 		return Math.max(scoreForward, Math.max(scoreLeft, scoreRight));
 	}
 	
@@ -138,7 +138,7 @@ public class FruitFinder implements Brain
 	private SortedMap<Double, Position> rankFruits(ArrayList<Position> fruits)
 	{
 		final int boxRadius = 3;
-		
+
 		SortedMap<Double, Position> ranking = new TreeMap<Double, Position>();
 		final Board board = state.getBoard();
 		for(Position fruit : fruits)
@@ -148,7 +148,7 @@ public class FruitFinder implements Brain
 			final int xMax = fruit.getX() + boxRadius;
 			final int yMin = fruit.getY() - boxRadius;
 			final int yMax = fruit.getY() + boxRadius;
-			
+
 			for(int x = xMin; x <= xMax; x++)
 			{
 				if(x < 0 || x >= board.getWidth())
@@ -157,10 +157,10 @@ public class FruitFinder implements Brain
 				{
 					if(y < 0 || y >= board.getHeight())
 						continue;
-					
+
 					final Position position = new Position(x, y);
 					Square square = board.getSquare(position);
-					
+
 					if(square.hasFruit())
 						score += 25;
 					else if(square.hasWall())
@@ -171,12 +171,12 @@ public class FruitFinder implements Brain
 						score -= 5;
 				}
 			}
-			
+
 			final double distanceScore = getDistanceScore(fruit);
 			score += distanceScore;
 			ranking.put(score, fruit);
 		}
-		
+
 		return ranking;
 	}
 
@@ -184,20 +184,20 @@ public class FruitFinder implements Brain
 	{
 		Set<Snake> snakes = state.getSnakes();
 		snakes.remove(self);
-		
+
 		for(Snake snake : snakes)
 			if(snake.getSegments().contains(position))
 				return true;
-		
+
 		return false;
 	}
 
 	private double getDistanceScore(Position position)
 	{
-		final double distance = self.getHeadPosition().getDistanceTo(position); 
-		return 100/distance;
+		final double distance = self.getHeadPosition().getDistanceTo(position);
+		return 100 / distance;
 	}
-	
+
 	private Direction getDirectionTo(Position position)
 	{
 		List<Direction> directions = GameState.getRelativeDirections(self.getHeadPosition(), position);
