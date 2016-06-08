@@ -24,20 +24,24 @@ public class FruitFinder implements Brain
 	private long maximumThinkingTime;
 	private long startTime;
 	private Direction fruitDirection;
-	
+	private int growthFrequency;
+	private int gameTurns = 0;
+
 	@Override
 	public Direction getNextMove(Snake yourSnake, GameState gameState)
 	{
-		this.startTime = System.currentTimeMillis();
-		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
+		gameTurns++;
 		this.self = yourSnake;
 		this.state = gameState;
+		this.growthFrequency = state.getMetadata().getGrowthFrequency();
+		this.startTime = System.currentTimeMillis();
+		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
 		this.fruitRanking = rankFruits(gameState.getFruits());
 		this.fruitDirection = directionToHighestRankingFruit();
-		
+
 		return getDesicionTreeDirection();
 	}
-	
+
 	private long computationTimeLeft()
 	{
 		final long elpasedTime = System.currentTimeMillis() - startTime;
@@ -111,13 +115,19 @@ public class FruitFinder implements Brain
 			score += 200/depth;
 		
 		snake.addFirst(nextPosition);
-		snake.removeLast();
-		
+		if(!snakeWillGrow())
+			snake.removeLast();
+
 		final double scoreForward = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection, score, depth+1);
 		final double scoreLeft = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection.turnLeft(), score, depth+1);
 		final double scoreRight = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection.turnRight(), score, depth+1);
 		
 		return Math.max(scoreForward, Math.max(scoreLeft, scoreRight));
+	}
+	
+	private boolean snakeWillGrow()
+	{
+		return gameTurns % growthFrequency == 0;
 	}
 
 	private boolean isVisitedPosition(List<Position> visited, Position nextPosition)
