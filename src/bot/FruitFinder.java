@@ -5,7 +5,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import gameLogic.Board;
 import gameLogic.Brain;
@@ -17,127 +19,128 @@ import gameLogic.Square;
 
 public class FruitFinder implements Brain
 {
-	private static final int MAX_DEPTH = 32;
+	private static final int MAX_DEPTH = 64;
 	private SortedMap<Double, Position> fruitRanking;
 	private Snake self;
 	private GameState state;
 	private long maximumThinkingTime;
 	private long startTime;
-	private Direction fruitDirection;
+	private List<Direction> fruitDirection;
 	private int growthFrequency;
-	private int gameTurns = 0;
+	private int gameTurns;
+	
+	public FruitFinder()
+	{
+		gameTurns = 0;
+		System.out.println("FruitFinder decision tree max depth: " + MAX_DEPTH);
+	}
 
 	@Override
 	public Direction getNextMove(Snake yourSnake, GameState gameState)
 	{
+		this.startTime = System.currentTimeMillis();
 		gameTurns++;
 		this.self = yourSnake;
 		this.state = gameState;
 		this.growthFrequency = state.getMetadata().getGrowthFrequency();
-		this.startTime = System.currentTimeMillis();
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
 		this.fruitRanking = rankFruits(gameState.getFruits());
-		this.fruitDirection = directionToHighestRankingFruit();
+		this.fruitDirection = directionToHighestRankingFruit(self.getHeadPosition(), self.getCurrentDirection());
 
 		return getDesicionTreeDirection();
 	}
-
-	private long computationTimeLeft()
+	
+	private long thinkingTimeElapsed()
 	{
-		final long elpasedTime = System.currentTimeMillis() - startTime;
+		return System.currentTimeMillis() - startTime;
+	}
+
+	private long thinkingTimeLeft()
+	{
+		final long elpasedTime = thinkingTimeElapsed();
 		return maximumThinkingTime - elpasedTime;
 	}
 
 	private Direction getDesicionTreeDirection()
 	{
-		final Direction currentDirection = self.getCurrentDirection();
 		final Position currentPosition = self.getHeadPosition();
 
-		double scoreForward, scoreLeft, scoreRight;
-		scoreForward = scoreRight = scoreLeft = 0;
-
 		LinkedList<Position> snake = self.getSegments();
-
-		if(fruitDirection.equals(currentDirection.turnLeft()))
+		SortedMap<Double, Direction> directionRecord = new TreeMap<Double, Direction>();
+		
+		for(Direction directionToFruit : fruitDirection)
 		{
-			scoreLeft = getScore(currentPosition, snake, currentDirection.turnLeft(), 0, 1);
-			scoreRight = getScore(currentPosition, snake, currentDirection.turnRight(), 0, 1);
-			scoreForward = getScore(currentPosition, snake, currentDirection, 0, 1);
-		}
-		else if(fruitDirection.equals(currentDirection.turnRight()))
-		{
-			scoreRight = getScore(currentPosition, snake, currentDirection.turnRight(), 0, 1);
-			scoreLeft = getScore(currentPosition, snake, currentDirection.turnLeft(), 0, 1);
-			scoreForward = getScore(currentPosition, snake, currentDirection, 0, 1);
-		}
-		else
-		{
-			scoreForward = getScore(currentPosition, snake, currentDirection, 0, 1);
-			scoreRight = getScore(currentPosition, snake, currentDirection.turnRight(), 0, 1);
-			scoreLeft = getScore(currentPosition, snake, currentDirection.turnLeft(), 0, 1);
+			final double score = getScore(currentPosition, snake, directionToFruit, 0, 1);
+			directionRecord.put(score, directionToFruit);
 		}
 
-		if(scoreLeft == scoreRight && scoreRight == scoreForward)
-			return fruitDirection;
-
-		if(scoreLeft >= scoreForward && scoreLeft >= scoreRight)
-			return currentDirection.turnLeft();
-		if(scoreRight >= scoreForward && scoreLeft <= scoreRight)
-			return currentDirection.turnRight();
-		return currentDirection;
+		final double bestScore = directionRecord.lastKey();
+		
+		return directionRecord.get(bestScore);
 	}
 
-	private Direction directionToHighestRankingFruit()
+	private Position getBestFruit()
 	{
-		if(fruitRanking.isEmpty() || fruitRanking.lastKey() < 0)
-			return self.getCurrentDirection();
-
 		final double bestScore = fruitRanking.lastKey();
-		final Position bestFruit = fruitRanking.get(bestScore);
-		return getDirectionTo(bestFruit);
+		return fruitRanking.get(bestScore);
 	}
 
 	private double getScore(Position currentPosition, LinkedList<Position> snake, Direction currentDirection, double score, final int depth)
 	{
-		if(computationTimeLeft() < 10 || depth == MAX_DEPTH)
+		if(thinkingTimeLeft() < 10 || depth == MAX_DEPTH)
 			return score;
 
-		final Position nextPosition = currentDirection.calculateNextPosition(currentPosition);
+		currentPosition = currentDirection.calculateNextPosition(currentPosition);
 
-		if(state.getBoard().isLethal(nextPosition))
+		if(state.getBoard().isLethal(currentPosition))
 			return score;
-		if(snake.contains(nextPosition))
+		if(snake.contains(currentPosition))
 			return score;
 		else
 			score++;
 
-		if(state.getBoard().getSquare(nextPosition).hasFruit())
-			score += 200 / depth;
+		if(state.getBoard().getSquare(currentPosition).hasFruit())
+			score += 5;
 
-		snake.addFirst(nextPosition);
+		snake.addFirst(currentPosition);
 		if(!snakeWillGrow())
 			snake.removeLast();
+		
+		List<Direction> orderOfDirections = directionToHighestRankingFruit(currentPosition, currentDirection);
+		SortedSet<Double> scores = new TreeSet<Double>();
+		
+		for(Direction direction : orderOfDirections)
+		{
+			final double scoreOfDirection = getScore(currentPosition, new LinkedList<Position>(snake), direction, score, depth+1);
+			scores.add(scoreOfDirection);
+		}
 
-		final double scoreForward = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection, score, depth+1);
-		final double scoreLeft = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection.turnLeft(), score, depth+1);
-		final double scoreRight = getScore(nextPosition, new LinkedList<Position>(snake), currentDirection.turnRight(), score, depth+1);
-
-		return Math.max(scoreForward, Math.max(scoreLeft, scoreRight));
+		return scores.last();
 	}
 	
+	private List<Direction> directionToHighestRankingFruit(Position from, Direction currentDirection)
+	{
+		List<Direction> directions = new LinkedList<Direction>();
+		if(!fruitRanking.isEmpty())
+			directions = GameState.getRelativeDirections(from, getBestFruit());
+		
+		for(Direction direction : Direction.values())
+		{
+			if(!directions.contains(direction) && !isOppositeOf(direction, currentDirection))
+				directions.add(direction);
+		}
+		
+		return directions;
+	}
+
 	private boolean snakeWillGrow()
 	{
 		return gameTurns % growthFrequency == 0;
 	}
 
-	private boolean isVisitedPosition(List<Position> visited, Position nextPosition)
-	{
-		return visited.contains(nextPosition);
-	}
-
 	private SortedMap<Double, Position> rankFruits(ArrayList<Position> fruits)
 	{
-		final int boxRadius = 3;
+		final int boxRadius = 4;
 
 		SortedMap<Double, Position> ranking = new TreeMap<Double, Position>();
 		final Board board = state.getBoard();
@@ -162,7 +165,7 @@ public class FruitFinder implements Brain
 					Square square = board.getSquare(position);
 
 					if(square.hasFruit())
-						score += 25;
+						score += 30;
 					else if(square.hasWall())
 						score--;
 					else if(containsSnakeHeads(position))
@@ -195,29 +198,16 @@ public class FruitFinder implements Brain
 	private double getDistanceScore(Position position)
 	{
 		final double distance = self.getHeadPosition().getDistanceTo(position);
-		return 100 / distance;
+		return 200 / distance;
 	}
-
-	private Direction getDirectionTo(Position position)
+	
+	private boolean isOppositeOf(final Direction direction1, final Direction direction2)
 	{
-		List<Direction> directions = GameState.getRelativeDirections(self.getHeadPosition(), position);
-		if(directions.isEmpty())
-			return self.getCurrentDirection();
-		Direction directionToPosition = directions.get(0);
-		if(directionIsOppositeToCurrentDirection(directionToPosition) && directions.size() == 2)
-			directionToPosition = directions.get(1);
-		else if(directionIsOppositeToCurrentDirection(directionToPosition) && directions.size() == 1)
-			directionToPosition = directionToPosition.turnRight();
-		return directionToPosition;
-	}
-
-	private boolean directionIsOppositeToCurrentDirection(Direction direction)
-	{
-		final Position currentVector = self.getCurrentDirection().getDirectionVector();
-		final Position newVector = direction.getDirectionVector();
-		final int x = currentVector.getX() + newVector.getX();
-		final int y = currentVector.getY() + newVector.getY();
-
+		final Position vector1 = direction1.getDirectionVector();
+		final Position vector2 = direction2.getDirectionVector();
+		final int x = vector1.getX() + vector2.getX();
+		final int y = vector1.getY() + vector2.getY();
+		
 		return x == 0 && y == 0;
 	}
 
