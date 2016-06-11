@@ -71,11 +71,12 @@ public class FruitFinder implements Brain
 		final Position currentPosition = self.getHeadPosition();
 
 		LinkedList<Position> snake = self.getSegments();
+		Set<Snake> snakes = state.getSnakes();
 		SortedMap<Double, Direction> directionRecord = new TreeMap<Double, Direction>();
 		
 		for(Direction directionToFruit : fruitDirection)
 		{
-			final double score = getScore(currentPosition, snake, directionToFruit, 0, 1);
+			final double score = getScore(currentPosition, snake, snakes, state.getFruits(), directionToFruit, 0, 1);
 			directionRecord.put(score, directionToFruit);
 		}
 
@@ -91,7 +92,7 @@ public class FruitFinder implements Brain
 		return fruitRanking.get(bestScore);
 	}
 
-	private double getScore(Position currentPosition, LinkedList<Position> snake, Direction currentDirection, double score, final int depth)
+	private double getScore(Position currentPosition, LinkedList<Position> snake, Set<Snake> snakes, Collection<Position> fruits, Direction currentDirection, double score, final int depth)
 	{
 		if(thinkingTimeLeft() < 10 || depth == MAX_DEPTH)
 			return score;
@@ -105,25 +106,55 @@ public class FruitFinder implements Brain
 		else
 			score++;
 
-		if(state.getBoard().getSquare(currentPosition).hasFruit())
+		if(fruits.contains(currentPosition))
+		{
 			score += 5;
+			fruits.remove(currentPosition);
+		}
 
-		snake.addFirst(currentPosition);
-		if(!snakeWillGrow())
-			snake.removeLast();
+		moveOwnSnake(snake, currentPosition);
+		snakes = moveOtherSnakes(snakes, depth);
 		
 		List<Direction> orderOfDirections = directionToHighestRankingFruit(currentPosition, currentDirection);
 		SortedSet<Double> scores = new TreeSet<Double>();
 		
 		for(Direction direction : orderOfDirections)
 		{
-			final double scoreOfDirection = getScore(currentPosition, new LinkedList<Position>(snake), direction, score, depth+1);
+			final double scoreOfDirection = getScore(currentPosition, snake, snakes, new HashSet<Position>(fruits), direction, score, depth+1);
 			scores.add(scoreOfDirection);
 		}
 
 		return scores.last();
 	}
 	
+	private Set<Snake> moveOtherSnakes(Set<Snake> snakes, int depth)
+	{
+		if(depth > 4)
+			return snakes;
+		
+		for(Snake snake : snakes)
+		{
+			if(snake.isDead())
+				continue;
+			LinkedList<Position> segments = snake.getSegments();
+			final Position head = segments.getFirst();
+			final Position next = snake.getCurrentDirection().calculateNextPosition(head);
+			segments.addFirst(next);
+			if(!snakeWillGrow())
+				segments.removeLast();
+		}
+		
+		return new HashSet<Snake>(snakes);
+	}
+
+	private void moveOwnSnake(LinkedList<Position> snake, Position currentPosition)
+	{
+		
+		snake.addFirst(currentPosition);
+		if(!snakeWillGrow())
+			snake.removeLast();
+	}
+
 	private List<Direction> directionToHighestRankingFruit(Position from, Direction currentDirection)
 	{
 		List<Direction> directions = new LinkedList<Direction>();
@@ -171,7 +202,7 @@ public class FruitFinder implements Brain
 					Square square = board.getSquare(position);
 
 					if(square.hasFruit())
-						score += 30;
+						score += 50;
 					else if(square.hasWall())
 						score--;
 					else if(containsSnakeHeads(position))
@@ -204,7 +235,7 @@ public class FruitFinder implements Brain
 	private double getDistanceScore(Position position)
 	{
 		final double distance = self.getHeadPosition().getDistanceTo(position);
-		return 200 / distance;
+		return 3000 / (distance*2);
 	}
 	
 	private boolean isOppositeOf(final Direction direction1, final Direction direction2)
