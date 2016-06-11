@@ -1,6 +1,8 @@
 package bot;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -46,6 +48,9 @@ public class FruitFinder implements Brain
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
 		this.fruitRanking = rankFruits(gameState.getFruits());
 		this.fruitDirection = directionToHighestRankingFruit(self.getHeadPosition(), self.getCurrentDirection());
+		
+		if(!fruitRanking.isEmpty())
+			System.out.println("Fruit score: " + fruitRanking.lastKey() + " --> " + fruitRanking.get(fruitRanking.lastKey()));
 
 		return getDesicionTreeDirection();
 	}
@@ -75,6 +80,7 @@ public class FruitFinder implements Brain
 		}
 
 		final double bestScore = directionRecord.lastKey();
+		System.out.println(bestScore);
 		
 		return directionRecord.get(bestScore);
 	}
