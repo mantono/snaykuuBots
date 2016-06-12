@@ -99,9 +99,6 @@ public class FruitFinder implements Brain
 			return score;
 
 		currentPosition = currentDirection.calculateNextPosition(currentPosition);
-		
-		moveOwnSnake(snake, currentPosition);
-		snakes = moveOtherSnakes(snakes, depth);
 
 		if(containsSnake(snakes, currentPosition) || containsWall(currentPosition))
 			return score;
@@ -115,6 +112,9 @@ public class FruitFinder implements Brain
 			score += 5;
 			fruits.remove(currentPosition);
 		}
+
+		moveOwnSnake(snake, currentPosition);
+		snakes = moveOtherSnakes(snakes, depth);
 		
 		List<Direction> orderOfDirections = directionToHighestRankingFruit(currentPosition, currentDirection);
 		SortedSet<Double> scores = new TreeSet<Double>();
