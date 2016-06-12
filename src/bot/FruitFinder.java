@@ -72,6 +72,7 @@ public class FruitFinder implements Brain
 
 		LinkedList<Position> snake = self.getSegments();
 		Set<Snake> snakes = state.getSnakes();
+		snakes.remove(self);
 		SortedMap<Double, Direction> directionRecord = new TreeMap<Double, Direction>();
 		
 		for(Direction directionToFruit : fruitDirection)
@@ -99,7 +100,7 @@ public class FruitFinder implements Brain
 
 		currentPosition = currentDirection.calculateNextPosition(currentPosition);
 
-		if(state.getBoard().isLethal(currentPosition))
+		if(containsSnake(snakes, currentPosition) || containsWall(currentPosition))
 			return score;
 		if(snake.contains(currentPosition))
 			return score;
@@ -127,6 +128,20 @@ public class FruitFinder implements Brain
 		return scores.last();
 	}
 	
+	private boolean containsWall(Position currentPosition)
+	{
+		return state.getBoard().hasWall(currentPosition);
+	}
+
+	private boolean containsSnake(Set<Snake> snakes, Position currentPosition)
+	{
+		for(Snake opponent : snakes)
+			if(opponent.getSegments().contains(currentPosition))
+				return true;
+		
+		return false;
+	}
+
 	private Set<Snake> moveOtherSnakes(Set<Snake> snakes, int depth)
 	{
 		if(depth > 4)
