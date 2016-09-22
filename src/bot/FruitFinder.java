@@ -25,6 +25,7 @@ import gameLogic.Square;
 public class FruitFinder implements Brain
 {
 	private static final int MAX_DEPTH = 64;
+	private static final short VERSION = 2;
 	private SortedMap<Double, Position> fruitRanking;
 	private Snake self;
 	private GameState state;
@@ -37,6 +38,7 @@ public class FruitFinder implements Brain
 	public FruitFinder()
 	{
 		gameTurns = 0;
+		System.out.println("FruitFinder version " + VERSION);
 		System.out.println("FruitFinder decision tree max depth: " + MAX_DEPTH);
 	}
 
@@ -211,47 +213,40 @@ public class FruitFinder implements Brain
 
 	private SortedMap<Double, Position> rankFruits(ArrayList<Position> fruits)
 	{
-		final int boxRadius = 4;
-
 		SortedMap<Double, Position> ranking = new TreeMap<Double, Position>();
-		final Board board = state.getBoard();
+		final Set<Snake> snakes = enemySnakes(); 
+
 		for(Position fruit : fruits)
 		{
-			double score = 0;
-			final int xMin = fruit.getX() - boxRadius;
-			final int xMax = fruit.getX() + boxRadius;
-			final int yMin = fruit.getY() - boxRadius;
-			final int yMax = fruit.getY() + boxRadius;
-
-			for(int x = xMin; x <= xMax; x++)
+			int distance = 0;
+			final int ownDistance = self.getHeadPosition().getDistanceTo(fruit);
+			for(Snake snake : snakes)
 			{
-				if(x < 0 || x >= board.getWidth())
-					continue;
-				for(int y = yMin; y <= yMax; y++)
-				{
-					if(y < 0 || y >= board.getHeight())
-						continue;
-
-					final Position position = new Position(x, y);
-					Square square = board.getSquare(position);
-
-					if(square.hasFruit())
-						score += 50;
-					else if(square.hasWall())
-						score--;
-					else if(containsSnakeHeads(position))
-						score -= 7;
-					else if(square.hasSnake())
-						score -= 5;
-				}
+				final Position snakeHead = snake.getHeadPosition();
+				int snakeToFruiDistance = snakeHead.getDistanceTo(fruit);
+				snakeToFruiDistance *= snakeToFruiDistance;
+				distance += snakeToFruiDistance;
 			}
 
-			final double distanceScore = getDistanceScore(fruit);
-			score += distanceScore;
+			final double avgDistance = distance/snakes.size();
+			final double score = avgDistance/ownDistance;
+
 			ranking.put(score, fruit);
 		}
 
 		return ranking;
+	}
+
+	private Set<Snake> enemySnakes()
+	{
+		final Set<Snake> snakes = state.getSnakes();
+		final Set<Snake> liveSnakes = new HashSet<Snake>(snakes.size());
+		
+		for(Snake snake : snakes)
+			if(snake != self && !snake.isDead())
+				liveSnakes.add(snake);
+		
+		return liveSnakes;
 	}
 
 	private boolean containsSnakeHeads(Position position)
