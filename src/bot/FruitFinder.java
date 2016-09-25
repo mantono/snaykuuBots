@@ -26,8 +26,8 @@ import gameLogic.Snake;
 
 public class FruitFinder implements Brain
 {
-	private static final int MAX_DEPTH = 64;
-	private static final short VERSION = 6;
+	private static final int MAX_DEPTH = 2048;
+	private static final short VERSION = 7;
 	private SortedMap<Double, Position> fruitRanking;
 	private Snake self;
 	private GameState state;
@@ -56,28 +56,31 @@ public class FruitFinder implements Brain
 		this.fruitRanking = rankFruits(gameState.getFruits());
 		this.fruitDirection = directionToHighestRankingFruit(self.getHeadPosition(), self.getCurrentDirection());
 		
-		Position to;
+		Deque<Direction> path = getPath(self.getHeadPosition());
+		if(path.isEmpty())
+			return self.getCurrentDirection();
+		return path.pollLast();
+	}
+
+	private Position getNextTarget()
+	{
+		Position target;
 		if(fruitRanking.isEmpty())
-			to = getSafePosition();
+			target = getSafePosition();
 		else
-			to = getBestFruit();
+			target = getBestFruit();
 		
-		while(isTrap(to))
+		while(isTrap(target))
 		{
-			System.out.println(to + " is a DANGEROUS position, skipping....");
+			System.out.println(target + " is a DANGEROUS position, skipping....");
 			fruitRanking.remove(fruitRanking.lastKey());
 			if(fruitRanking.isEmpty())
 				break;
 			else
-				to = getBestFruit();
+				target = getBestFruit();
 		}
 		
-		System.out.println("Trying to reach :" + to);
-		
-		Deque<Direction> path = getPath(self.getHeadPosition(), to);
-		if(path.isEmpty())
-			return self.getCurrentDirection();
-		return path.pollLast();
+		return target;
 	}
 
 	private boolean isTrap(Position to)
@@ -118,8 +121,11 @@ public class FruitFinder implements Brain
 		
 		return true;	}
 
-	private Deque<Direction> getPath(Position from, Position to)
+	private Deque<Direction> getPath(Position from)
 	{
+		Position to = getNextTarget();
+		System.out.println("Trying to reach :" + to);
+		
 		final int initialSize = state.getBoard().getWidth() * state.getBoard().getHeight();
 		final Deque<Direction> directionStack = new ArrayDeque<Direction>(initialSize);
 		final Deque<Position> positionStack = new ArrayDeque<Position>(MAX_DEPTH);
@@ -127,9 +133,15 @@ public class FruitFinder implements Brain
 		Position position = from;
 		positionStack.push(from);
 		Deque<Direction> tallestStack = new ArrayDeque<Direction>();
+		
+		int iterations = 0;
 
-		while(!position.equals(to) && directionStack.size() <= MAX_DEPTH && thinkingTimeLeft() > 30)
+		while(directionStack.size() <= MAX_DEPTH && thinkingTimeLeft() > 30)
 		{
+			if(position.equals(to))
+			{
+				to = getNextTarget();
+			}
 			visitedPositions.add(position);
 			SortedMap<Integer, Direction> distances = new TreeMap<Integer, Direction>();
 			Set<Position> highRiskPositions = calculateHighRiskPositions();
@@ -149,7 +161,7 @@ public class FruitFinder implements Brain
 			Direction direction = getDirectionWithHighestScore(distances);
 			
 			if(direction == null && directionStack.isEmpty())
-				return tallestStack;
+				break;
 			
 			if(direction != null)
 			{
@@ -165,21 +177,22 @@ public class FruitFinder implements Brain
 				positionStack.pop();
 			}
 			position = positionStack.peek();
+			iterations++;
 		}
 		
-		if(thinkingTimeLeft() < 30)
-			return tallestStack;
+		if(directionStack.size() > tallestStack.size())
+			tallestStack = directionStack;
 		
-		Iterator<Direction> dirIter = directionStack.descendingIterator();
+		Iterator<Direction> dirIter = tallestStack.descendingIterator();
 		int i = 0;
 		while(dirIter.hasNext() && i < 16)
 		{
 			System.out.print(dirIter.next() + " ");
 			i++;
 		}
-		System.out.println(" (" + directionStack.size() + ")");
+		System.out.println(" (" + tallestStack.size() + "), iterations; " + iterations);
 		
-		return directionStack;
+		return tallestStack;
 	}
 
 	private Direction getDirectionWithHighestScore(SortedMap<Integer, Direction> distances)
@@ -212,13 +225,13 @@ public class FruitFinder implements Brain
 		return positions;
 	}
 
-	public Position getSafePosition()
+	private Position getSafePosition()
 	{
 		final Board board = state.getBoard();
 		final int width = board.getWidth();
 		final int height = board.getHeight();
-		final int wStep = width / 4;
-		final int hStep = height / 4;
+		final int wStep = width / 6;
+		final int hStep = height / 6;
 		SortedMap<Integer, Position> safeRank = new TreeMap<Integer, Position>();
 		for(int x = 0; x < width; x += wStep)
 		{
@@ -227,6 +240,8 @@ public class FruitFinder implements Brain
 				final Position position = new Position(x, y);
 				for(int radius = 1; radius < 8; radius += 2)
 				{
+					if(x + radius >= board.getWidth() || y + radius >= board.getHeight())
+						break;
 					if(!board.hasLethalObjectWithinRange(position, radius))
 						safeRank.put(radius, position);
 					else
@@ -419,7 +434,7 @@ public class FruitFinder implements Brain
 			}
 
 			final double avgDistance = distance / snakes.size();
-			final double score = avgDistance / ownDistance;
+			final double score = avgDistance / Math.pow(ownDistance, 2);
 
 			ranking.put(score, fruit);
 		}
