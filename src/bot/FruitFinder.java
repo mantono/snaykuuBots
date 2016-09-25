@@ -3,8 +3,11 @@ package bot;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -138,7 +141,7 @@ public class FruitFinder implements Brain
 				to = getNextTarget();
 			}
 			visitedPositions.add(position);
-			SortedMap<Integer, Direction> distances = new TreeMap<Integer, Direction>();
+			Map<Direction, Integer> distances = new HashMap<Direction, Integer>();
 			Set<Position> highRiskPositions = calculateHighRiskPositions();
 			for(Direction dir : Direction.values())
 			{
@@ -149,12 +152,13 @@ public class FruitFinder implements Brain
 				if(!isLethal && !isHighRisk && !visited)
 				{
 					final int distance = next.getDistanceTo(to);
-					distances.put(distance, dir);
+					distances.put(dir, distance);
 				}
 			}
 
-			Direction direction = getDirectionWithHighestScore(distances);
-
+			Direction direction = getDirectionToTarget(distances);
+			if(iterations == 0)
+				System.out.println("Direction weighting: " + distances);
 			if(direction == null && directionStack.isEmpty())
 				break;
 
@@ -216,12 +220,23 @@ public class FruitFinder implements Brain
 		return false;
 	}
 
-	private Direction getDirectionWithHighestScore(SortedMap<Integer, Direction> distances)
+	private Direction getDirectionToTarget(Map<Direction, Integer> distances)
 	{
 		if(distances.isEmpty())
 			return null;
-		final int dist = distances.firstKey();
-		return distances.get(dist);
+		int shortest = Integer.MAX_VALUE;
+		Direction bestDirection = null;
+		
+		for(Entry<Direction, Integer> entry : distances.entrySet())
+		{
+			if(entry.getValue() < shortest)
+			{
+				shortest = entry.getValue();
+				bestDirection = entry.getKey();
+			}
+		}
+		
+		return bestDirection;
 	}
 
 	private Set<Position> calculateHighRiskPositions()
