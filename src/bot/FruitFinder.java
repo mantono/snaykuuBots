@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -27,7 +25,6 @@ public class FruitFinder implements Brain
 	private GameState state;
 	private long maximumThinkingTime;
 	private long startTime;
-	private List<Direction> fruitDirection;
 	private int growthFrequency;
 	private int gameTurns;
 
@@ -48,8 +45,6 @@ public class FruitFinder implements Brain
 		this.growthFrequency = state.getMetadata().getGrowthFrequency();
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
 		this.fruitRanking = rankFruits(gameState.getFruits());
-		this.fruitDirection = directionToHighestRankingFruit(self.getHeadPosition(), self.getCurrentDirection());
-		
 		Deque<Direction> path = getPath(self.getHeadPosition());
 		if(path.isEmpty())
 			return self.getCurrentDirection();
@@ -244,7 +239,6 @@ public class FruitFinder implements Brain
 			}
 		}
 
-		System.out.println(safeRank);
 		final int max = safeRank.lastKey();
 		return safeRank.get(max);
 	}
@@ -264,21 +258,6 @@ public class FruitFinder implements Brain
 	{
 		final double bestScore = fruitRanking.lastKey();
 		return fruitRanking.get(bestScore);
-	}
-
-	private List<Direction> directionToHighestRankingFruit(Position from, Direction currentDirection)
-	{
-		List<Direction> directions = new LinkedList<Direction>();
-		if(!fruitRanking.isEmpty())
-			directions = GameState.getRelativeDirections(from, getBestFruit());
-
-		for(Direction direction : Direction.values())
-		{
-			if(!directions.contains(direction) && !isOppositeOf(direction, currentDirection))
-				directions.add(direction);
-		}
-
-		return directions;
 	}
 
 	private boolean snakeWillGrow()
@@ -322,15 +301,5 @@ public class FruitFinder implements Brain
 				liveSnakes.add(snake);
 
 		return liveSnakes;
-	}
-
-	private boolean isOppositeOf(final Direction direction1, final Direction direction2)
-	{
-		final Position vector1 = direction1.getDirectionVector();
-		final Position vector2 = direction2.getDirectionVector();
-		final int x = vector1.getX() + vector2.getX();
-		final int y = vector1.getY() + vector2.getY();
-
-		return x == 0 && y == 0;
 	}
 }
