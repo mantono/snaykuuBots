@@ -15,11 +15,12 @@ import gameLogic.Direction;
 import gameLogic.GameState;
 import gameLogic.Position;
 import gameLogic.Snake;
+import gameLogic.Square;
 
 public class FruitFinder implements Brain
 {
-	private static final int MAX_DEPTH = 2048;
-	private static final short VERSION = 7;
+	private static final int MAX_DEPTH = 8192;
+	private static final short VERSION = 8;
 	private SortedMap<Double, Position> fruitRanking;
 	private Snake self;
 	private GameState state;
@@ -27,6 +28,7 @@ public class FruitFinder implements Brain
 	private long startTime;
 	private int growthFrequency;
 	private int gameTurns;
+	private int boardArea;
 
 	public FruitFinder()
 	{
@@ -45,9 +47,12 @@ public class FruitFinder implements Brain
 		this.growthFrequency = state.getMetadata().getGrowthFrequency();
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
 		this.fruitRanking = rankFruits(gameState.getFruits());
+		this.boardArea = getBoardArea();
+
 		Deque<Direction> path = getPath(self.getHeadPosition());
 		if(path.isEmpty())
 			return self.getCurrentDirection();
+		System.out.println("Turning to " + path.peekLast());
 		return path.pollLast();
 	}
 
@@ -58,7 +63,7 @@ public class FruitFinder implements Brain
 			target = getSafePosition();
 		else
 			target = getBestFruit();
-		
+
 		while(isTrap(target))
 		{
 			System.out.println(target + " is a DANGEROUS position, skipping....");
@@ -68,7 +73,7 @@ public class FruitFinder implements Brain
 			else
 				target = getBestFruit();
 		}
-		
+
 		return target;
 	}
 
@@ -83,14 +88,14 @@ public class FruitFinder implements Brain
 		final int y = to.getY();
 		for(int xi = -1; xi < 2; xi++)
 		{
-			for(int yi = -1; yi < 2; yi+=2)
+			for(int yi = -1; yi < 2; yi += 2)
 			{
-				final Position pos = new Position(x+xi, y+yi);
+				final Position pos = new Position(x + xi, y + yi);
 				if(!state.getBoard().isLethal(pos))
 					return false;
 			}
 		}
-		
+
 		return true;
 	}
 
@@ -98,23 +103,24 @@ public class FruitFinder implements Brain
 	{
 		final int x = to.getX();
 		final int y = to.getY();
-		for(int xi = -1; xi < 2; xi+=2)
+		for(int xi = -1; xi < 2; xi += 2)
 		{
 			for(int yi = -1; yi < 2; yi++)
 			{
-				final Position pos = new Position(x+xi, y+yi);
+				final Position pos = new Position(x + xi, y + yi);
 				if(!state.getBoard().isLethal(pos))
 					return false;
 			}
 		}
-		
-		return true;	}
+
+		return true;
+	}
 
 	private Deque<Direction> getPath(Position from)
 	{
 		Position to = getNextTarget();
 		System.out.println("Trying to reach :" + to);
-		
+
 		final int initialSize = state.getBoard().getWidth() * state.getBoard().getHeight();
 		final Deque<Direction> directionStack = new ArrayDeque<Direction>(initialSize);
 		final Deque<Position> positionStack = new ArrayDeque<Position>(MAX_DEPTH);
@@ -122,10 +128,10 @@ public class FruitFinder implements Brain
 		Position position = from;
 		positionStack.push(from);
 		Deque<Direction> tallestStack = new ArrayDeque<Direction>();
-		
+
 		int iterations = 0;
 
-		while(directionStack.size() <= MAX_DEPTH && thinkingTimeLeft() > 30)
+		while(!reachedComputationCapacity(directionStack.size()))
 		{
 			if(position.equals(to))
 			{
@@ -137,7 +143,7 @@ public class FruitFinder implements Brain
 			for(Direction dir : Direction.values())
 			{
 				final Position next = dir.calculateNextPosition(position);
-				final boolean isLethal = state.getBoard().getSquare(next).isLethal();
+				final boolean isLethal = isLethal(next);
 				final boolean isHighRisk = highRiskPositions.contains(next);
 				final boolean visited = visitedPositions.contains(next);
 				if(!isLethal && !isHighRisk && !visited)
@@ -148,10 +154,10 @@ public class FruitFinder implements Brain
 			}
 
 			Direction direction = getDirectionWithHighestScore(distances);
-			
+
 			if(direction == null && directionStack.isEmpty())
 				break;
-			
+
 			if(direction != null)
 			{
 				directionStack.push(direction);
@@ -168,10 +174,10 @@ public class FruitFinder implements Brain
 			position = positionStack.peek();
 			iterations++;
 		}
-		
+
 		if(directionStack.size() > tallestStack.size())
 			tallestStack = directionStack;
-		
+
 		Iterator<Direction> dirIter = tallestStack.descendingIterator();
 		int i = 0;
 		while(dirIter.hasNext() && i < 16)
@@ -180,8 +186,34 @@ public class FruitFinder implements Brain
 			i++;
 		}
 		System.out.println(" (" + tallestStack.size() + "), iterations; " + iterations);
-		
+
 		return tallestStack;
+	}
+
+	private boolean isLethal(Position next)
+	{
+		final Square square = state.getBoard().getSquare(next);
+		return square.hasSnake() || square.hasWall();
+	}
+
+	private int getBoardArea()
+	{
+		final int width = state.getBoard().getWidth();
+		final int height = state.getBoard().getWidth();
+		final int physicalLimit = width * height;
+
+		return physicalLimit;
+	}
+
+	private boolean reachedComputationCapacity(final int stackSize)
+	{
+		if(thinkingTimeLeft() < 10)
+			return true;
+
+		if(MAX_DEPTH < stackSize || boardArea < stackSize)
+			return true;
+
+		return false;
 	}
 
 	private Direction getDirectionWithHighestScore(SortedMap<Integer, Direction> distances)
