@@ -263,7 +263,7 @@ public class FruitFinder implements Brain
 
 			final Position forward = direction.calculateNextPosition(head);
 			final Position left = direction.turnLeft().calculateNextPosition(head);
-			final Position right = direction.turnLeft().calculateNextPosition(head);
+			final Position right = direction.turnRight().calculateNextPosition(head);
 
 			positions.add(forward);
 			positions.add(left);
