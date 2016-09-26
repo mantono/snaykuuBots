@@ -256,6 +256,8 @@ public class FruitFinder implements Brain
 		Set<Position> positions = new HashSet<Position>(snakes.size() * 4);
 		for(Snake snake : snakes)
 		{
+			if(snake.isDead())
+				continue;
 			final Position head = snake.getHeadPosition();
 			final Direction direction = snake.getCurrentDirection();
 
