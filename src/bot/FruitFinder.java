@@ -55,7 +55,7 @@ public class FruitFinder implements Brain
 		Deque<Direction> path = getPath(self.getHeadPosition());
 		if(path.isEmpty())
 			return self.getCurrentDirection();
-		System.out.println("Turning to " + path.peekLast());
+		System.out.println("Turning to " + path.peekLast() + " from " + yourSnake.getHeadPosition() + "\n");
 		return path.pollLast();
 	}
 
@@ -122,7 +122,7 @@ public class FruitFinder implements Brain
 	private Deque<Direction> getPath(Position from)
 	{
 		Position to = getNextTarget();
-		System.out.println("Trying to reach :" + to);
+		System.out.println("Trying to reach " + to);
 
 		final int initialSize = state.getBoard().getWidth() * state.getBoard().getHeight();
 		final Deque<Direction> directionStack = new ArrayDeque<Direction>(initialSize);
@@ -186,14 +186,7 @@ public class FruitFinder implements Brain
 		if(directionStack.size() > tallestStack.size())
 			tallestStack = directionStack;
 
-		Iterator<Direction> dirIter = tallestStack.descendingIterator();
-		int i = 0;
-		while(dirIter.hasNext() && i < 16)
-		{
-			System.out.print(dirIter.next() + " ");
-			i++;
-		}
-		System.out.println(" (" + tallestStack.size() + "), iterations; " + iterations);
+		System.out.println("Stack depth: " + tallestStack.size() + ", positions evaluated; " + iterations);
 
 		return tallestStack;
 	}
@@ -305,7 +298,7 @@ public class FruitFinder implements Brain
 				}
 			}
 		}
-
+		
 		final int max = safeRank.lastKey();
 		return safeRank.get(max);
 	}
