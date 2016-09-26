@@ -143,8 +143,12 @@ public class FruitFinder implements Brain
 			visitedPositions.add(position);
 			Map<Direction, Integer> distances = new HashMap<Direction, Integer>();
 			Set<Position> highRiskPositions = calculateHighRiskPositions();
+			
 			for(Direction dir : Direction.values())
 			{
+				final Direction currentDireciton = getCurrentDirection(directionStack);
+				if(isOpositeDirections(currentDireciton, dir))
+					continue;
 				final Position next = dir.calculateNextPosition(position);
 				final boolean isLethal = isLethal(next);
 				final boolean isHighRisk = highRiskPositions.contains(next);
@@ -192,6 +196,19 @@ public class FruitFinder implements Brain
 		System.out.println(" (" + tallestStack.size() + "), iterations; " + iterations);
 
 		return tallestStack;
+	}
+
+	private boolean isOpositeDirections(Direction currentDireciton, Direction dir)
+	{
+		dir = dir.turnLeft().turnLeft();
+		return currentDireciton.equals(dir);
+	}
+
+	private Direction getCurrentDirection(Deque<Direction> directionStack)
+	{
+		if(directionStack.isEmpty())
+			return self.getCurrentDirection();
+		return directionStack.peek();
 	}
 
 	private boolean isLethal(Position next)
