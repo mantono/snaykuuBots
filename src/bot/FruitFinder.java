@@ -36,7 +36,7 @@ public class FruitFinder implements Brain
 	public FruitFinder()
 	{
 		gameTurns = 0;
-		System.out.println("FruitFinder version " + VERSION);
+		System.out.println("\n\nFruitFinder version " + VERSION);
 		System.out.println("FruitFinder decision tree max depth: " + MAX_DEPTH);
 	}
 
@@ -278,7 +278,10 @@ public class FruitFinder implements Brain
 				{
 					if(x + radius >= board.getWidth() || y + radius >= board.getHeight())
 						break;
-					if(!board.hasLethalObjectWithinRange(position, radius))
+					final boolean hasWall = board.hasWall(position);
+					final boolean hasSnake = board.hasWall(position);
+					final boolean hasLethalInRange = board.hasLethalObjectWithinRange(position, radius);
+					if(!hasWall && !hasSnake && !hasLethalInRange)
 						safeRank.put(radius, position);
 					else
 						break;
