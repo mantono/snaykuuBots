@@ -154,9 +154,11 @@ public class FruitFinder implements Brain
 				final boolean isLethal = isLethal(next);
 				final boolean isHighRisk = highRiskPositions.contains(next);
 				final boolean visited = visitedPositions.contains(next);
-				if(!isLethal && !isHighRisk && !visited)
+				if(!isLethal && !visited)
 				{
-					final int distance = next.getDistanceTo(to);
+					int distance = next.getDistanceTo(to);
+					if(isHighRisk)
+						distance += 5;
 					distances.put(dir, distance);
 				}
 			}
