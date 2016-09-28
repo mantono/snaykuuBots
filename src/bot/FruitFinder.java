@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
@@ -235,18 +236,21 @@ public class FruitFinder implements Brain
 		if(distances.isEmpty())
 			return null;
 		int shortest = Integer.MAX_VALUE;
-		Direction bestDirection = null;
-		
+
+		for(int distance : distances.values())
+			if(distance < shortest)
+				shortest = distance;
+
+		List<Direction> possibleDirections = new ArrayList<Direction>(4);
+
 		for(Entry<Direction, Integer> entry : distances.entrySet())
-		{
-			if(entry.getValue() < shortest)
-			{
-				shortest = entry.getValue();
-				bestDirection = entry.getKey();
-			}
-		}
-		
-		return bestDirection;
+			if(entry.getValue() == shortest)
+				possibleDirections.add(entry.getKey());
+
+		Random rand = new Random();
+		final int choiceOfDirection = rand.nextInt(possibleDirections.size());
+
+		return possibleDirections.get(choiceOfDirection);
 	}
 
 	private Set<Position> calculateHighRiskPositions()
