@@ -7,8 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -369,5 +369,31 @@ public class FruitFinder implements Brain
 				liveSnakes.add(snake);
 
 		return liveSnakes;
+	}
+
+	class Path
+	{
+		private final Deque<Direction> directions;
+		private final Deque<Position> positions;
+		private final Set<Position> fruits;
+		
+		Path(Snake snake, GameState state)
+		{
+			this.directions = new ArrayDeque<Direction>();
+			this.positions = new ArrayDeque<Position>();
+			this.fruits = new HashSet<Position>(state.getFruits());
+		}
+		
+		Path(Path path)
+		{
+			this.directions = new ArrayDeque<Direction>(path.directions);
+			this.positions = new ArrayDeque<Position>(path.positions);
+			this.fruits = new HashSet<Position>(path.fruits);
+		}
+		
+		Direction getNextDirection()
+		{
+			return Direction.WEST;
+		}
 	}
 }
