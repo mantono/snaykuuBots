@@ -187,13 +187,10 @@ public class FruitFinder implements Brain
 
 	private Set<Position> calculateHighRiskPositions()
 	{
-		Set<Snake> snakes = state.getSnakes();
-		snakes.remove(self);
+		Set<Snake> snakes = enemySnakes();
 		Set<Position> positions = new HashSet<Position>(snakes.size() * 4);
 		for(Snake snake : snakes)
 		{
-			if(snake.isDead())
-				continue;
 			final Position head = snake.getHeadPosition();
 			final Direction direction = snake.getCurrentDirection();
 
