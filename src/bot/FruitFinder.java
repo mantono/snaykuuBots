@@ -256,7 +256,7 @@ public class FruitFinder implements Brain
 
 	private Queue<Position> rankFruits(ArrayList<Position> fruits)
 	{
-		SortedMap<Double, Position> ranking = new TreeMap<Double, Position>();
+		SortedMap<Integer, Position> ranking = new TreeMap<Integer, Position>();
 		final Set<Snake> snakes = enemySnakes();
 
 		for(Position fruit : fruits)
@@ -264,18 +264,17 @@ public class FruitFinder implements Brain
 			if(isLethal(fruit))
 				continue;
 
-			int distance = 0;
+			int distanceClosestSnake = Integer.MAX_VALUE;
 			final int ownDistance = self.getHeadPosition().getDistanceTo(fruit);
 			for(Snake snake : snakes)
 			{
 				final Position snakeHead = snake.getHeadPosition();
-				int snakeToFruiDistance = snakeHead.getDistanceTo(fruit);
-				snakeToFruiDistance *= snakeToFruiDistance;
-				distance += snakeToFruiDistance;
+				final int snakeToFruiDistance = snakeHead.getDistanceTo(fruit);
+				if(snakeToFruiDistance < distanceClosestSnake)
+					distanceClosestSnake = snakeToFruiDistance;
 			}
 
-			final double avgDistance = distance / snakes.size();
-			final double score = avgDistance / Math.pow(ownDistance, 2);
+			final int score = distanceClosestSnake - ownDistance;
 
 			ranking.put(score, fruit);
 		}
@@ -284,7 +283,7 @@ public class FruitFinder implements Brain
 		
 		while(!ranking.isEmpty())
 		{
-			final double bestScore = ranking.lastKey();
+			final int bestScore = ranking.lastKey();
 			final Position fruit = ranking.remove(bestScore);
 			fruitQueue.add(fruit);
 		}
