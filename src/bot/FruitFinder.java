@@ -261,6 +261,9 @@ public class FruitFinder implements Brain
 
 		for(Position fruit : fruits)
 		{
+			if(isLethal(fruit))
+				continue;
+
 			int distance = 0;
 			final int ownDistance = self.getHeadPosition().getDistanceTo(fruit);
 			for(Snake snake : snakes)
