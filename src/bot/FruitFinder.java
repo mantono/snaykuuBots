@@ -56,7 +56,7 @@ public class FruitFinder implements Brain
 		this.boardArea = getBoardArea();
 
 		System.out.println(fruitQueue.size());
-		Deque<Direction> path = getPath(self.getHeadPosition());
+		Deque<Direction> path = getPath(self.getHeadPosition(), self.getCurrentDirection());
 		System.out.println(path.size());
 		Iterator<Direction> iter = path.iterator();
 		while(iter.hasNext())
@@ -113,9 +113,13 @@ public class FruitFinder implements Brain
 		return true;
 	}
 
-	private Deque<Direction> getPath(Position from)
+	private Deque<Direction> getPath(Position from, Direction currentDirection)
 	{
 		Graph g = new Graph(state.getBoard());
+		final Direction oppositeDirection = currentDirection.turnLeft().turnLeft();
+		final Position unavailablePosition = oppositeDirection.calculateNextPosition(from);
+		g.remove(unavailablePosition);
+		
 		Deque<Direction> path = null;
 		while(path == null)
 		{
@@ -308,6 +312,11 @@ public class FruitFinder implements Brain
 		private void add(Position pos)
 		{
 			matrix[pos.getX()][pos.getY()] = true;
+		}
+		
+		private void remove(Position pos)
+		{
+			matrix[pos.getX()][pos.getY()] = false;
 		}
 
 		Deque<Direction> getPath(Position from, Position to)
