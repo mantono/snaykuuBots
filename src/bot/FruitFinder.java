@@ -30,7 +30,6 @@ public class FruitFinder implements Brain
 	private Queue<Position> fruitQueue;
 	private Snake self;
 	private GameState state;
-	private Set<Position> danger;
 	private long maximumThinkingTime;
 	private long startTime;
 	private int growthFrequency;
@@ -51,7 +50,6 @@ public class FruitFinder implements Brain
 		gameTurns++;
 		this.self = yourSnake;
 		this.state = gameState;
-		this.danger = mapDangerousSquares(gameState.getBoard());
 		this.growthFrequency = state.getMetadata().getGrowthFrequency();
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
 		this.fruitQueue = rankFruits(gameState.getFruits());
@@ -67,16 +65,6 @@ public class FruitFinder implements Brain
 			return self.getCurrentDirection();
 		System.out.println("Turning to " + path.peek() + " from " + yourSnake.getHeadPosition() + "\n");
 		return path.pop();
-	}
-
-	private Set<Position> mapDangerousSquares(Board board)
-	{
-		final Set<Position> danger = new HashSet<Position>(board.getHeight() * board.getWidth());
-		danger.addAll(state.getWalls());
-		for(Snake snake : state.getSnakes())
-			danger.addAll(snake.getSegments());
-		
-		return danger;
 	}
 
 	private Position getNextTarget()
@@ -221,7 +209,7 @@ public class FruitFinder implements Brain
 	{
 		Random rand = new Random();
 		Position p = null;
-		while(p == null || danger.contains(p) || isTrap(p))
+		while(p == null || isLethal(p) || isTrap(p))
 		{
 			final int x = rand.nextInt(state.getBoard().getWidth());
 			final int y = rand.nextInt(state.getBoard().getHeight());
