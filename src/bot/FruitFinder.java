@@ -145,13 +145,6 @@ public class FruitFinder implements Brain
 		return currentDireciton.equals(dir);
 	}
 
-	private Direction getCurrentDirection(Deque<Direction> directionStack)
-	{
-		if(directionStack.isEmpty())
-			return self.getCurrentDirection();
-		return directionStack.peek();
-	}
-
 	private boolean isLethal(Position next)
 	{
 		final Square square = state.getBoard().getSquare(next);
@@ -318,13 +311,10 @@ public class FruitFinder implements Brain
 				for(int x = 0; x < board.getWidth(); x++)
 				{
 					final Position pos = new Position(x, y);
-					if(!danger.contains(pos))
+					if(!isLethal(pos))
 						add(pos);
 				}
 			}
-
-//			final Position head = self.getHeadPosition();
-//			add(head);
 		}
 
 		private void add(Position pos)
