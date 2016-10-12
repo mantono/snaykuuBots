@@ -204,7 +204,7 @@ public class FruitFinder implements Brain
 		if(thinkingTimeLeft() < 10)
 			return true;
 
-		if(MAX_DEPTH < stackSize || remainingBoardSize() < stackSize)
+		if(MAX_DEPTH < stackSize || remainingBoardSize() - Math.sqrt(getSnakeLength()) < stackSize)
 			return true;
 
 		return false;
@@ -231,17 +231,22 @@ public class FruitFinder implements Brain
 		return positions;
 	}
 
+	private boolean isHighRisk(Position position)
+	{
+		return highRiskPositions.contains(position);
+	}
+
 	private Position getSafePosition()
 	{
 		Random rand = new Random();
 		Position p = null;
-		while(p == null || isLethal(p) || isTrap(p))
+		while(p == null || isLethal(p) || isTrap(p) || isHighRisk(p))
 		{
 			final int x = rand.nextInt(state.getBoard().getWidth());
 			final int y = rand.nextInt(state.getBoard().getHeight());
 			p = new Position(x, y);
 		}
-		
+
 		return p;
 	}
 
@@ -268,7 +273,7 @@ public class FruitFinder implements Brain
 
 		for(Position fruit : fruits)
 		{
-			if(isLethal(fruit))
+			if(isLethal(fruit) || isHighRisk(fruit))
 				continue;
 
 			int distanceClosestSnake = Integer.MAX_VALUE;
