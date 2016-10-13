@@ -40,12 +40,14 @@ public class GraphBot implements Brain
 		while(path == null)
 		{	
 			final Position to = analyzer.getNextTarget();
-			path = graph.getBfsPath(self.getHeadPosition(), to);
+			path = graph.getBfsPath(from, to);
 		}
 		
-		final Direction firstDirection = path.peek();
+		Direction firstDirection = path.peek();
+		if(isOpositeDirections(self.getCurrentDirection(), firstDirection))
+			firstDirection = firstDirection.turnLeft();
 		
-		final Direction direction = getBestDirection(firstDirection, self.getHeadPosition());
+		final Direction direction = getBestDirection(firstDirection, from);
 		return direction;
 	}
 
@@ -70,6 +72,9 @@ public class GraphBot implements Brain
 		}
 		
 		final int highScore = scores.lastKey();
+		final Direction bestDirection = scores.get(highScore);
+		System.out.println(bestDirection + "("+highScore+")");
+		
 		return scores.get(highScore);
 	}
 
@@ -87,8 +92,6 @@ public class GraphBot implements Brain
 		visited.add(current);
 		
 		score += analyzer.getScore(current);
-		
-		System.out.println(visited.size() + " / " + score);
 		
 		int highScore = Integer.MIN_VALUE;
 		
@@ -125,5 +128,10 @@ public class GraphBot implements Brain
 		final long elpasedTime = thinkingTimeElapsed();
 		return state.getMetadata().getMaximumThinkingTime() - elpasedTime;
 	}
-	
+
+	private boolean isOpositeDirections(Direction currentDireciton, Direction dir)
+	{
+		dir = dir.turnLeft().turnLeft();
+		return currentDireciton.equals(dir);
+	}
 }
