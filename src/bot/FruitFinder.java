@@ -7,36 +7,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
-import gameLogic.Board;
 import gameLogic.Brain;
 import gameLogic.Direction;
 import gameLogic.GameState;
 import gameLogic.Position;
 import gameLogic.Snake;
-import gameLogic.Square;
 
 public class FruitFinder implements Brain
 {
 	private static final int MAX_DEPTH = 8192;
 	private static final short VERSION = 8;
-	private SortedMap<Double, Position> fruitRanking;
 	private Snake self;
 	private GameState state;
 	private long maximumThinkingTime;
 	private long startTime;
-	private int growthFrequency;
-	private int gameTurns;
 	private int boardArea;
+	private BoardAnalyzer analyzer;
 
 	public FruitFinder()
 	{
-		gameTurns = 0;
 		System.out.println("\n\nFruitFinder version " + VERSION);
 		System.out.println("FruitFinder decision tree max depth: " + MAX_DEPTH);
 	}
@@ -45,12 +38,10 @@ public class FruitFinder implements Brain
 	public Direction getNextMove(Snake yourSnake, GameState gameState)
 	{
 		this.startTime = System.currentTimeMillis();
-		gameTurns++;
 		this.self = yourSnake;
 		this.state = gameState;
-		this.growthFrequency = state.getMetadata().getGrowthFrequency();
+		this.analyzer = new BoardAnalyzer(gameState, yourSnake);
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
-		this.fruitRanking = rankFruits(gameState.getFruits());
 		this.boardArea = getBoardArea();
 
 		Deque<Direction> path = getPath(self.getHeadPosition());
@@ -60,69 +51,9 @@ public class FruitFinder implements Brain
 		return path.pollLast();
 	}
 
-	private Position getNextTarget()
-	{
-		Position target;
-		if(fruitRanking.isEmpty())
-			target = getSafePosition();
-		else
-			target = getBestFruit();
-
-		while(isTrap(target))
-		{
-			System.out.println(target + " is a DANGEROUS position, skipping....");
-			fruitRanking.remove(fruitRanking.lastKey());
-			if(fruitRanking.isEmpty())
-				break;
-			else
-				target = getBestFruit();
-		}
-
-		return target;
-	}
-
-	private boolean isTrap(Position to)
-	{
-		return isVerticalDanger(to) || isHorizontalDanger(to);
-	}
-
-	private boolean isHorizontalDanger(Position to)
-	{
-		final int x = to.getX();
-		final int y = to.getY();
-		for(int xi = -1; xi < 2; xi++)
-		{
-			for(int yi = -1; yi < 2; yi += 2)
-			{
-				final Position pos = new Position(x + xi, y + yi);
-				if(!state.getBoard().isLethal(pos))
-					return false;
-			}
-		}
-
-		return true;
-	}
-
-	private boolean isVerticalDanger(Position to)
-	{
-		final int x = to.getX();
-		final int y = to.getY();
-		for(int xi = -1; xi < 2; xi += 2)
-		{
-			for(int yi = -1; yi < 2; yi++)
-			{
-				final Position pos = new Position(x + xi, y + yi);
-				if(!state.getBoard().isLethal(pos))
-					return false;
-			}
-		}
-
-		return true;
-	}
-
 	private Deque<Direction> getPath(Position from)
 	{
-		Position to = getNextTarget();
+		Position to = analyzer.getNextTarget();
 		System.out.println("Trying to reach " + to);
 
 		final int initialSize = state.getBoard().getWidth() * state.getBoard().getHeight();
@@ -139,11 +70,10 @@ public class FruitFinder implements Brain
 		{
 			if(position.equals(to))
 			{
-				to = getNextTarget();
+				to = analyzer.getNextTarget();
 			}
 			visitedPositions.add(position);
 			Map<Direction, Integer> distances = new HashMap<Direction, Integer>();
-			Set<Position> highRiskPositions = calculateHighRiskPositions();
 			
 			for(Direction dir : Direction.values())
 			{
@@ -151,8 +81,8 @@ public class FruitFinder implements Brain
 				if(isOpositeDirections(currentDireciton, dir))
 					continue;
 				final Position next = dir.calculateNextPosition(position);
-				final boolean isLethal = isLethal(next);
-				final boolean isHighRisk = highRiskPositions.contains(next);
+				final boolean isLethal = analyzer.isLethal(next);
+				final boolean isHighRisk = analyzer.isHighRisk(next);
 				final boolean visited = visitedPositions.contains(next);
 				if(!isLethal && !visited)
 				{
@@ -207,12 +137,6 @@ public class FruitFinder implements Brain
 		return directionStack.peek();
 	}
 
-	private boolean isLethal(Position next)
-	{
-		final Square square = state.getBoard().getSquare(next);
-		return square.hasSnake() || square.hasWall();
-	}
-
 	private int getBoardArea()
 	{
 		final int width = state.getBoard().getWidth();
@@ -255,62 +179,6 @@ public class FruitFinder implements Brain
 		return possibleDirections.get(choiceOfDirection);
 	}
 
-	private Set<Position> calculateHighRiskPositions()
-	{
-		Set<Snake> snakes = state.getSnakes();
-		snakes.remove(self);
-		Set<Position> positions = new HashSet<Position>(snakes.size() * 4);
-		for(Snake snake : snakes)
-		{
-			if(snake.isDead())
-				continue;
-			final Position head = snake.getHeadPosition();
-			final Direction direction = snake.getCurrentDirection();
-
-			final Position forward = direction.calculateNextPosition(head);
-			final Position left = direction.turnLeft().calculateNextPosition(head);
-			final Position right = direction.turnRight().calculateNextPosition(head);
-
-			positions.add(forward);
-			positions.add(left);
-			positions.add(right);
-		}
-
-		return positions;
-	}
-
-	private Position getSafePosition()
-	{
-		final Board board = state.getBoard();
-		final int width = board.getWidth();
-		final int height = board.getHeight();
-		final int wStep = width / 6;
-		final int hStep = height / 6;
-		SortedMap<Integer, Position> safeRank = new TreeMap<Integer, Position>();
-		for(int x = 0; x < width; x += wStep)
-		{
-			for(int y = 0; y < height; y += hStep)
-			{
-				final Position position = new Position(x, y);
-				for(int radius = 1; radius < 8; radius += 2)
-				{
-					if(x + radius >= board.getWidth() || y + radius >= board.getHeight())
-						break;
-					final boolean hasWall = board.hasWall(position);
-					final boolean hasSnake = board.hasWall(position);
-					final boolean hasLethalInRange = board.hasLethalObjectWithinRange(position, radius);
-					if(!hasWall && !hasSnake && !hasLethalInRange)
-						safeRank.put(radius, position);
-					else
-						break;
-				}
-			}
-		}
-		
-		final int max = safeRank.lastKey();
-		return safeRank.get(max);
-	}
-
 	private long thinkingTimeElapsed()
 	{
 		return System.currentTimeMillis() - startTime;
@@ -320,54 +188,5 @@ public class FruitFinder implements Brain
 	{
 		final long elpasedTime = thinkingTimeElapsed();
 		return maximumThinkingTime - elpasedTime;
-	}
-
-	private Position getBestFruit()
-	{
-		final double bestScore = fruitRanking.lastKey();
-		return fruitRanking.get(bestScore);
-	}
-
-	private boolean snakeWillGrow()
-	{
-		return gameTurns % growthFrequency == 0;
-	}
-
-	private SortedMap<Double, Position> rankFruits(ArrayList<Position> fruits)
-	{
-		SortedMap<Double, Position> ranking = new TreeMap<Double, Position>();
-		final Set<Snake> snakes = enemySnakes();
-
-		for(Position fruit : fruits)
-		{
-			int distance = 0;
-			final int ownDistance = self.getHeadPosition().getDistanceTo(fruit);
-			for(Snake snake : snakes)
-			{
-				final Position snakeHead = snake.getHeadPosition();
-				int snakeToFruiDistance = snakeHead.getDistanceTo(fruit);
-				snakeToFruiDistance *= snakeToFruiDistance;
-				distance += snakeToFruiDistance;
-			}
-
-			final double avgDistance = distance / snakes.size();
-			final double score = avgDistance / Math.pow(ownDistance, 2);
-
-			ranking.put(score, fruit);
-		}
-
-		return ranking;
-	}
-
-	private Set<Snake> enemySnakes()
-	{
-		final Set<Snake> snakes = state.getSnakes();
-		final Set<Snake> liveSnakes = new HashSet<Snake>(snakes.size());
-
-		for(Snake snake : snakes)
-			if(snake != self && !snake.isDead())
-				liveSnakes.add(snake);
-
-		return liveSnakes;
 	}
 }
