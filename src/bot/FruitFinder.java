@@ -2,15 +2,13 @@ package bot;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Random;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -25,12 +23,11 @@ import gameLogic.Square;
 
 public class FruitFinder implements Brain
 {
-	private static final int MAX_DEPTH = 512;
-	private static final short VERSION = 10;
-	private Queue<Position> fruitQueue;
+	private static final int MAX_DEPTH = 8192;
+	private static final short VERSION = 8;
+	private SortedMap<Double, Position> fruitRanking;
 	private Snake self;
 	private GameState state;
-	private Set<Position> lethalPositions, highRiskPositions;
 	private long maximumThinkingTime;
 	private long startTime;
 	private int growthFrequency;
@@ -51,48 +48,37 @@ public class FruitFinder implements Brain
 		gameTurns++;
 		this.self = yourSnake;
 		this.state = gameState;
-		this.lethalPositions = getLethalPositions(state.getBoard());
-		this.highRiskPositions = calculateHighRiskPositions();
 		this.growthFrequency = state.getMetadata().getGrowthFrequency();
 		this.maximumThinkingTime = gameState.getMetadata().getMaximumThinkingTime();
-		this.fruitQueue = rankFruits(gameState.getFruits());
+		this.fruitRanking = rankFruits(gameState.getFruits());
 		this.boardArea = getBoardArea();
 
-		try
-		{
-			System.out.println(fruitQueue.size());
-			Deque<Direction> path = getPath(self.getHeadPosition(), self.getCurrentDirection());
-			System.out.println(path.size());
-			Iterator<Direction> iter = path.iterator();
-			while(iter.hasNext())
-				System.out.print(iter.next() + " ");
-			if(path.isEmpty())
-				return self.getCurrentDirection();
-			System.out.println("Turning to " + path.peek() + " from " + yourSnake.getHeadPosition() + "\n");
-			return path.pop();
-		}
-		catch(NullPointerException e)
-		{
-			e.printStackTrace();
-		}
-		return self.getCurrentDirection();
-	}
-
-	private Set<Position> getLethalPositions(Board board)
-	{
-		final Set<Position> danger = new HashSet<Position>(board.getHeight() * board.getWidth());
-		danger.addAll(state.getWalls());
-		for(Snake snake : state.getSnakes())
-			danger.addAll(snake.getSegments());
-
-		return danger;
+		Deque<Direction> path = getPath(self.getHeadPosition());
+		if(path.isEmpty())
+			return self.getCurrentDirection();
+		System.out.println("Turning to " + path.peekLast() + " from " + yourSnake.getHeadPosition() + "\n");
+		return path.pollLast();
 	}
 
 	private Position getNextTarget()
 	{
-		if(fruitQueue.isEmpty())
-			return getSafePosition();
-		return fruitQueue.poll();
+		Position target;
+		if(fruitRanking.isEmpty())
+			target = getSafePosition();
+		else
+			target = getBestFruit();
+
+		while(isTrap(target))
+		{
+			System.out.println(target + " is a DANGEROUS position, skipping....");
+			fruitRanking.remove(fruitRanking.lastKey());
+			if(fruitRanking.isEmpty())
+				break;
+			else
+				target = getBestFruit();
+		}
+
+		return target;
 	}
 
 	private boolean isTrap(Position to)
@@ -134,39 +120,78 @@ public class FruitFinder implements Brain
 		return true;
 	}
 
-	private Deque<Direction> getPath(Position from, Direction currentDirection)
+	private Deque<Direction> getPath(Position from)
 	{
-		Graph g = new Graph(state.getBoard());
-		final Direction oppositeDirection = currentDirection.turnLeft().turnLeft();
-		final Position unavailablePosition = oppositeDirection.calculateNextPosition(from);
-		g.remove(unavailablePosition);
+		Position to = getNextTarget();
+		System.out.println("Trying to reach " + to);
 
-		Deque<Direction> path = new ArrayDeque<>();
-		Deque<Direction> subPath = null;
-		while(!reachedComputationCapacity(path.size()))
+		final int initialSize = state.getBoard().getWidth() * state.getBoard().getHeight();
+		final Deque<Direction> directionStack = new ArrayDeque<Direction>(initialSize);
+		final Deque<Position> positionStack = new ArrayDeque<Position>(MAX_DEPTH);
+		final Set<Position> visitedPositions = new HashSet<Position>(self.getSegments());
+		Position position = from;
+		positionStack.push(from);
+		Deque<Direction> tallestStack = new ArrayDeque<Direction>();
+
+		int iterations = 0;
+
+		while(!reachedComputationCapacity(directionStack.size()))
 		{
-
-			Position to = null;
-			while(subPath == null && !reachedComputationCapacity(path.size()))
+			if(position.equals(to))
 			{
 				to = getNextTarget();
-				System.out.println("Trying to reach " + to);
-				if(!from.equals(to))
-					subPath = g.getBfsPath(from, to);
-				if(subPath == null)
-					System.out.println("Found no path between " + from + " and " + to);
-
 			}
-			if(subPath != null)
+			visitedPositions.add(position);
+			Map<Direction, Integer> distances = new HashMap<Direction, Integer>();
+			Set<Position> highRiskPositions = calculateHighRiskPositions();
+			
+			for(Direction dir : Direction.values())
 			{
-				path.addAll(subPath);
-				g.removeAll(from, subPath);
-				from = to;
-				subPath = null;
+				final Direction currentDireciton = getCurrentDirection(directionStack);
+				if(isOpositeDirections(currentDireciton, dir))
+					continue;
+				final Position next = dir.calculateNextPosition(position);
+				final boolean isLethal = isLethal(next);
+				final boolean isHighRisk = highRiskPositions.contains(next);
+				final boolean visited = visitedPositions.contains(next);
+				if(!isLethal && !visited)
+				{
+					int distance = next.getDistanceTo(to);
+					if(isHighRisk)
+						distance += 5;
+					distances.put(dir, distance);
+				}
 			}
-		}
-		return path;
 
+			Direction direction = getDirectionToTarget(distances);
+			if(iterations == 0)
+				System.out.println("Direction weighting: " + distances);
+			if(direction == null && directionStack.isEmpty())
+				break;
+
+			if(direction != null)
+			{
+				directionStack.push(direction);
+				final Position positionInDirection = direction.calculateNextPosition(position);
+				positionStack.push(positionInDirection);
+			}
+			else
+			{
+				if(directionStack.size() > tallestStack.size())
+					tallestStack = new ArrayDeque<Direction>(directionStack);
+				directionStack.pop();
+				positionStack.pop();
+			}
+			position = positionStack.peek();
+			iterations++;
+		}
+
+		if(directionStack.size() > tallestStack.size())
+			tallestStack = directionStack;
+
+		System.out.println("Stack depth: " + tallestStack.size() + ", positions evaluated; " + iterations);
+
+		return tallestStack;
 	}
 
 	private boolean isOpositeDirections(Direction currentDireciton, Direction dir)
@@ -175,9 +200,17 @@ public class FruitFinder implements Brain
 		return currentDireciton.equals(dir);
 	}
 
-	private boolean isLethal(Position position)
+	private Direction getCurrentDirection(Deque<Direction> directionStack)
 	{
-		return lethalPositions.contains(position);
+		if(directionStack.isEmpty())
+			return self.getCurrentDirection();
+		return directionStack.peek();
+	}
+
+	private boolean isLethal(Position next)
+	{
+		final Square square = state.getBoard().getSquare(next);
+		return square.hasSnake() || square.hasWall();
 	}
 
 	private int getBoardArea()
@@ -189,33 +222,48 @@ public class FruitFinder implements Brain
 		return physicalLimit;
 	}
 
-	private int remainingBoardSize()
-	{
-		return boardArea - lethalPositions.size();
-	}
-
-	private int getSnakeLength()
-	{
-		return self.getSegments().size();
-	}
-
 	private boolean reachedComputationCapacity(final int stackSize)
 	{
 		if(thinkingTimeLeft() < 10)
 			return true;
 
-		if(MAX_DEPTH < stackSize || remainingBoardSize() - Math.sqrt(getSnakeLength()) < stackSize)
+		if(MAX_DEPTH < stackSize || boardArea < stackSize)
 			return true;
 
 		return false;
 	}
 
+	private Direction getDirectionToTarget(Map<Direction, Integer> distances)
+	{
+		if(distances.isEmpty())
+			return null;
+		int shortest = Integer.MAX_VALUE;
+
+		for(int distance : distances.values())
+			if(distance < shortest)
+				shortest = distance;
+
+		List<Direction> possibleDirections = new ArrayList<Direction>(4);
+
+		for(Entry<Direction, Integer> entry : distances.entrySet())
+			if(entry.getValue() == shortest)
+				possibleDirections.add(entry.getKey());
+
+		Random rand = new Random();
+		final int choiceOfDirection = rand.nextInt(possibleDirections.size());
+
+		return possibleDirections.get(choiceOfDirection);
+	}
+
 	private Set<Position> calculateHighRiskPositions()
 	{
-		Set<Snake> snakes = enemySnakes();
+		Set<Snake> snakes = state.getSnakes();
+		snakes.remove(self);
 		Set<Position> positions = new HashSet<Position>(snakes.size() * 4);
 		for(Snake snake : snakes)
 		{
+			if(snake.isDead())
+				continue;
 			final Position head = snake.getHeadPosition();
 			final Direction direction = snake.getCurrentDirection();
 
@@ -231,23 +279,36 @@ public class FruitFinder implements Brain
 		return positions;
 	}
 
-	private boolean isHighRisk(Position position)
-	{
-		return highRiskPositions.contains(position);
-	}
-
 	private Position getSafePosition()
 	{
-		Random rand = new Random();
-		Position p = null;
-		while(p == null || isLethal(p) || isTrap(p) || isHighRisk(p))
+		final Board board = state.getBoard();
+		final int width = board.getWidth();
+		final int height = board.getHeight();
+		final int wStep = width / 6;
+		final int hStep = height / 6;
+		SortedMap<Integer, Position> safeRank = new TreeMap<Integer, Position>();
+		for(int x = 0; x < width; x += wStep)
 		{
-			final int x = rand.nextInt(state.getBoard().getWidth());
-			final int y = rand.nextInt(state.getBoard().getHeight());
-			p = new Position(x, y);
+			for(int y = 0; y < height; y += hStep)
+			{
+				final Position position = new Position(x, y);
+				for(int radius = 1; radius < 8; radius += 2)
+				{
+					if(x + radius >= board.getWidth() || y + radius >= board.getHeight())
+						break;
+					final boolean hasWall = board.hasWall(position);
+					final boolean hasSnake = board.hasWall(position);
+					final boolean hasLethalInRange = board.hasLethalObjectWithinRange(position, radius);
+					if(!hasWall && !hasSnake && !hasLethalInRange)
+						safeRank.put(radius, position);
+					else
+						break;
+				}
+			}
 		}
-
-		return p;
+		
+		final int max = safeRank.lastKey();
+		return safeRank.get(max);
 	}
 
 	private long thinkingTimeElapsed()
@@ -261,46 +322,41 @@ public class FruitFinder implements Brain
 		return maximumThinkingTime - elpasedTime;
 	}
 
+	private Position getBestFruit()
+	{
+		final double bestScore = fruitRanking.lastKey();
+		return fruitRanking.get(bestScore);
+	}
+
 	private boolean snakeWillGrow()
 	{
 		return gameTurns % growthFrequency == 0;
 	}
 
-	private Queue<Position> rankFruits(ArrayList<Position> fruits)
+	private SortedMap<Double, Position> rankFruits(ArrayList<Position> fruits)
 	{
-		SortedMap<Integer, Position> ranking = new TreeMap<Integer, Position>();
+		SortedMap<Double, Position> ranking = new TreeMap<Double, Position>();
 		final Set<Snake> snakes = enemySnakes();
 
 		for(Position fruit : fruits)
 		{
-			if(isLethal(fruit) || isHighRisk(fruit))
-				continue;
-
-			int distanceClosestSnake = Integer.MAX_VALUE;
+			int distance = 0;
 			final int ownDistance = self.getHeadPosition().getDistanceTo(fruit);
 			for(Snake snake : snakes)
 			{
 				final Position snakeHead = snake.getHeadPosition();
-				final int snakeToFruiDistance = snakeHead.getDistanceTo(fruit);
-				if(snakeToFruiDistance < distanceClosestSnake)
-					distanceClosestSnake = snakeToFruiDistance;
+				int snakeToFruiDistance = snakeHead.getDistanceTo(fruit);
+				snakeToFruiDistance *= snakeToFruiDistance;
+				distance += snakeToFruiDistance;
 			}
 
-			final int score = distanceClosestSnake - ownDistance * 2;
+			final double avgDistance = distance / snakes.size();
+			final double score = avgDistance / Math.pow(ownDistance, 2);
 
 			ranking.put(score, fruit);
 		}
 
-		final Queue<Position> fruitQueue = new ArrayDeque<Position>(fruits.size());
-		
-		while(!ranking.isEmpty())
-		{
-			final int bestScore = ranking.lastKey();
-			final Position fruit = ranking.remove(bestScore);
-			fruitQueue.add(fruit);
-		}
-		
-		return fruitQueue;
+		return ranking;
 	}
 
 	private Set<Snake> enemySnakes()
@@ -313,112 +369,5 @@ public class FruitFinder implements Brain
 				liveSnakes.add(snake);
 
 		return liveSnakes;
-	}
-
-	/**** Graph data structure for path computation *****/
-
-	class Graph
-	{
-		private final boolean[][] matrix;
-
-		Graph(Board board)
-		{
-			this.matrix = new boolean[board.getWidth()][board.getHeight()];
-
-			for(int y = 0; y < board.getHeight(); y++)
-			{
-				for(int x = 0; x < board.getWidth(); x++)
-				{
-					final Position pos = new Position(x, y);
-					if(!isLethal(pos))
-						add(pos);
-				}
-			}
-		}
-
-		private void add(Position pos)
-		{
-			matrix[pos.getX()][pos.getY()] = true;
-		}
-
-		private void remove(Position pos)
-		{
-			matrix[pos.getX()][pos.getY()] = false;
-		}
-
-		private void removeAll(Position from, Collection<Direction> directions)
-		{
-			for(Direction d : directions)
-			{
-				final Position p = d.calculateNextPosition(from);
-				remove(p);
-				from = p;
-			}
-		}
-
-		Deque<Direction> getBfsPath(Position from, Position to)
-		{
-			if(from.equals(to))
-				throw new IllegalArgumentException("Start and end node (" + to + ") cannot be the same.");
-
-			final Queue<Position> nodesToCheck = new ArrayDeque<Position>(16);
-			final Map<Position, Position> path = new HashMap<Position, Position>(32);
-
-			nodesToCheck.add(from);
-			path.put(from, null);
-			while(!nodesToCheck.isEmpty())
-			{
-				Position currentNode = nodesToCheck.poll();
-				if(currentNode.equals(to))
-					return buildPath(path, from, to);
-
-				List<Position> possibleNodes = getConnectingNodesTo(currentNode);
-				for(Position node : possibleNodes)
-				{
-					if(!path.containsKey(node))
-					{
-						nodesToCheck.add(node);
-						path.put(node, currentNode);
-					}
-				}
-			}
-			return null;
-
-		}
-
-		private List<Position> getConnectingNodesTo(Position currentNode)
-		{
-			final List<Position> edges = new ArrayList<Position>(4);
-			for(Direction direction : Direction.values())
-			{
-				final Position next = direction.calculateNextPosition(currentNode);
-				if(has(next))
-					edges.add(next);
-			}
-			return edges;
-		}
-
-		private boolean has(Position p)
-		{
-			return matrix[p.getX()][p.getY()];
-		}
-
-		private Deque<Direction> buildPath(Map<Position, Position> visitedNodes, Position start, Position end)
-		{
-			if(start.equals(end))
-				throw new IllegalArgumentException("Start and end node (" + end + ") cannot be the same.");
-
-			final Deque<Direction> path = new ArrayDeque<Direction>(visitedNodes.size());
-			Position node = end;
-			while(node != start)
-			{
-				final Position comingFrom = visitedNodes.get(node);
-				final Direction direction = Direction.getDirectionFromPositionToPosition(comingFrom, node);
-				path.push(direction);
-				node = comingFrom;
-			}
-
-			return path;
-		}
 	}
 }
