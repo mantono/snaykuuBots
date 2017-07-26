@@ -49,7 +49,7 @@ public class GraphBot implements Brain
 		while(path == null)
 		{
 			final Position to = analyzer.getNextTarget();
-			path = graph.getBfsPath(from, to);
+			path = graph.bfsPath(from, to);
 		}
 
 		Direction direction = path.peek();

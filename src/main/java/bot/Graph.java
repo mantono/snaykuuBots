@@ -53,7 +53,7 @@ public class Graph
 		}
 	}
 
-	Deque<Direction> getBfsPath(Position from, Position to)
+	public Deque<Direction> bfsPath(Position from, Position to)
 	{
 		if(from.equals(to))
 			throw new IllegalArgumentException("Start and end node (" + to + ") cannot be the same.");
@@ -80,7 +80,6 @@ public class Graph
 			}
 		}
 		return null;
-
 	}
 
 	private List<Position> getConnectingNodesTo(Position currentNode)
