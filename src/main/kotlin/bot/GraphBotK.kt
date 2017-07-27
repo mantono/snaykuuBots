@@ -31,16 +31,6 @@ class GraphBotK: Brain
 		return self.currentDirection.turnLeft()
 	}
 
-	/*
-	private fun computeRequiredSpace(): Int
-	{
-		val snakeLength = self!!.segments.size
-		val growthFrequency = state!!.metadata.growthFrequency
-		val total = snakeLength + snakeLength / growthFrequency + 1
-		return total
-	}
-	*/
-
 	private fun bestDirection(initialDirection: Direction, currentDirection: Direction, current: Position, state: BoardState, time: TimeTracker): Direction
 	{
 		val directions: Queue<Direction> = listOfDirections(initialDirection, currentDirection)
@@ -78,35 +68,6 @@ class GraphBotK: Brain
 		return q
 	}
 
-	/*
-	private fun bestDirection(firstDirection: Direction, from: Position): Direction
-	{
-		val scores = TreeMap<Int, Direction>()
-		val visited = HashSet<Position>(128)
-		visited.add(from)
-
-		var next = firstDirection.calculateNextPosition(from)
-		var score = getScore(visited, next, 0)
-		scores.put(score, firstDirection)
-
-		for (d in Direction.values())
-		{
-			if (d == firstDirection)
-				continue
-			next = d.calculateNextPosition(from)
-			score = getScore(visited, next, 0)
-			scores.put(score, d)
-		}
-
-		val highScore = scores.lastKey()
-		val bestDirection = scores[highScore]
-		println(bestDirection.toString() + "(" + highScore + ")")
-
-		lastScore = highScore
-		return scores[highScore]
-	}
-	*/
-
 	private fun getScore(visited: MutableSet<Position>, current: Position, state: BoardState, time: TimeTracker, score: Int = 0): Int
 	{
 		if(current in visited)
@@ -133,38 +94,6 @@ class GraphBotK: Brain
 
 		return highScore
 	}
-
-	/*
-	private fun getScore(visited: MutableSet<Position>, current: Position, score: Int = 0): Int
-	{
-		var score = score
-		if (visited.contains(current))
-			return score
-
-		if (reachedComputationCapacity(visited.size))
-			return score
-
-		if (analyzer!!.isLethal(current))
-			return score
-
-		visited.add(current)
-
-		score += analyzer!!.getScore(current)
-
-		var highScore = Integer.MIN_VALUE
-
-		for (d in Direction.values())
-		{
-			val next = d.calculateNextPosition(current)
-			val scoreInDirection = getScore(visited, next, score)
-			if (scoreInDirection > highScore)
-				highScore = scoreInDirection
-		}
-		visited.remove(current)
-
-		return highScore
-	}
-	*/
 
 	private fun reachedComputationCapacity(time: TimeTracker, pathSize: Int): Boolean
 	{
