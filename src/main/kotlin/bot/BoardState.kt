@@ -96,8 +96,8 @@ fun calculateHighRiskPositions(state: GameState, self: Snake): Set<Position>
 fun randomSafePosition(state: BoardState): Position
 {
 	return randomPosition(state)
-			.filter(state::isLethal)
-			.filter(state::isHighRisk)
+			.filter{ !state.isLethal(it) }
+			.filter{ !state.isHighRisk(it) }
 			.first()
 }
 
