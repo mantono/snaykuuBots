@@ -14,6 +14,7 @@ import gameLogic.GameState;
 import gameLogic.Position;
 import gameLogic.Snake;
 
+@Deprecated
 public class BoardAnalyzer
 {
 	private final GameState state;
@@ -146,7 +147,7 @@ public class BoardAnalyzer
 					distanceClosestSnake = snakeToFruiDistance;
 			}
 
-			final int score = distanceClosestSnake - ownDistance * 2;
+			final int score = distanceClosestSnake - (ownDistance * 2);
 
 			ranking.put(score, fruit);
 		}

@@ -3,14 +3,14 @@ package bot;
 import gameLogic.*;
 
 import java.util.*;
-
+/*
 public class GraphBot implements Brain
 {
 	private final static int MAX_DEPTH = 1024;
 	private Snake self;
 	private GameState state;
 	private Graph graph;
-	private BoardAnalyzer analyzer;
+	private BoardState analyzer;
 	private long startTime;
 	private int lastScore = 0;
 
@@ -151,3 +151,4 @@ public class GraphBot implements Brain
 		return currentDireciton.equals(dir);
 	}
 }
+*/

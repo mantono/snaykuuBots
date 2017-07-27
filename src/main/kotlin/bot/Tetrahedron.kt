@@ -1,12 +1,9 @@
 package bot
 
 import gameLogic.*
-import kotlinx.coroutines.experimental.CommonPool
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.runBlocking
 import java.util.*
 
-class Tetrahedron : Brain
+class Tetrahedron: Brain
 {
 	override fun getNextMove(self: Snake, state: GameState): Direction
 	{
@@ -21,7 +18,7 @@ class Tetrahedron : Brain
 
 			System.out.println("Found best square: $sqr")
 
-			val analyzer: BoardAnalyzer = BoardAnalyzer(state, self)
+			val analyzer: BoardState = BoardState(state, self)
 			val graph: Graph = Graph(analyzer)
 
 			val path = graph.bfsPath(myPos, sqr)
@@ -36,19 +33,16 @@ class Tetrahedron : Brain
 		return Direction.NORTH
 	}
 
-	private fun turn(myPos: Position, direction: Direction, analyzer: BoardAnalyzer): Direction
+	private fun turn(myPos: Position, direction: Direction, analyzer: BoardState): Direction
 	{
-		if(direction != null)
-		{
-			val newPos = direction.calculateNextPosition(myPos)
-			if(!analyzer.isDangerous(newPos))
-				return direction
-		}
+		val newPos = direction.calculateNextPosition(myPos)
+		if(!analyzer.isDangerous(newPos))
+			return direction
 
 		for(d in Direction.values())
 		{
-			val newPos = d.calculateNextPosition(myPos)
-			if(!analyzer.isDangerous(newPos))
+			val pos = d.calculateNextPosition(myPos)
+			if(!analyzer.isDangerous(pos))
 				return d
 		}
 
@@ -61,13 +55,7 @@ class Tetrahedron : Brain
 			return bounds.positions[0]
 
 		val subBounds = bounds.divide()
-
-		val scores: SortedMap<Int, Bounds> = when(bounds.size)
-		{
-			in 1000..Int.MAX_VALUE -> asyncScore(matrix, subBounds)
-			else -> sequentialScore(matrix, subBounds)
-		}
-
+		val scores: SortedMap<Int, Bounds> = sequentialScore(matrix, subBounds)
 		val bestBounds: Bounds = scores[scores.firstKey()]!!
 		System.out.println("Best quadrant: $bestBounds, score: ${scores.firstKey()}")
 
@@ -95,36 +83,6 @@ class Tetrahedron : Brain
 	}
 
 	private fun compareDescending(a: Int, b: Int): Int = b - a
-
-	private fun asyncScore(matrix: ByteMatrix, subBounds: List<Bounds>): SortedMap<Int, Bounds>
-	{
-		val scores: SortedMap<Int, Bounds> = TreeMap(this::compareDescending)
-
-		val score0 = async(CommonPool) { countScoreAsync(matrix, subBounds[0]) }
-		val score1 = async(CommonPool) { countScoreAsync(matrix, subBounds[1]) }
-		val score2 = async(CommonPool) { countScoreAsync(matrix, subBounds[2]) }
-		val score3 = async(CommonPool) { countScoreAsync(matrix, subBounds[3]) }
-
-		scores.apply()
-		{
-			runBlocking()
-			{
-				put(score0.await(), subBounds[0])
-				put(score1.await(), subBounds[1])
-				put(score2.await(), subBounds[2])
-				put(score3.await(), subBounds[3])
-			}
-		}
-
-		return scores
-	}
-}
-
-suspend fun countScoreAsync(data: ByteMatrix, bounds: Bounds): Int
-{
-	return bounds.asSequence()
-			.map {data[it]}
-			.sum()
 }
 
 fun countScore(data: ByteMatrix, bounds: Bounds): Int

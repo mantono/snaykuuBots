@@ -17,9 +17,9 @@ public class Graph
 {
 	private final boolean[][] matrix;
 
-	Graph(BoardAnalyzer analyzer)
+	Graph(BoardState analyzer)
 	{
-		final Board board = analyzer.getBoard();
+		final Board board = analyzer.getState().getBoard();
 		this.matrix = new boolean[board.getWidth()][board.getHeight()];
 
 		for(int y = 0; y < board.getHeight(); y++)
