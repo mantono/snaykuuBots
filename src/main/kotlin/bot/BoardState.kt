@@ -9,7 +9,7 @@ class BoardState(state: GameState, self: Snake)
 	val self: Snake = self
 	val state: GameState = state
 	val walls: Set<Position> = HashSet(state.walls)
-	val lethalPositions: Set<Position> = lethalPositions(state)
+	val lethalPositions: Set<Position> = lethalPositions(state, self)
 	val highRiskPositions: Set<Position> = calculateHighRiskPositions(state, self)
 	val snakesPositions: Set<Position> = snakePositions(state)
 	val fruits: Set<Position> = HashSet(state.fruits)
@@ -18,35 +18,40 @@ class BoardState(state: GameState, self: Snake)
 	fun isHighRisk(position: Position): Boolean = position in highRiskPositions
 	fun isDangerous(position: Position): Boolean = isLethal(position) || isHighRisk(position)
 	fun hasFruit(position: Position): Boolean = position in fruits
+	fun isTrap(position: Position): Boolean = numberOfLethalNeighbours(position) >= 3
+	fun isTight(position: Position): Boolean = numberOfLethalNeighbours(position) >= 2
 
-	fun score(position: Position): Int
+	fun score(position: Position): Int = when(position)
 	{
-		if(isTrap(position))
-			return -25
-		if(isHighRisk(position))
-			return -5
-		if(hasFruit(position))
-			return 5
-		return 1
+		this::isTrap -> -50
+		this::isHighRisk -> -5
+		this::isTight -> -1
+		this::hasFruit -> 5
+		else -> 1
 	}
 
-	private fun isTrap(position: Position): Boolean
+	fun numberOfLethalNeighbours(position: Position): Int
 	{
-		val lethalNeighbours: Int = Direction.values()
+		return Direction.values()
 				.map { position going it }
 				.filter(this::isLethal)
 				.filter { it != self.headPosition }
 				.count()
-
-		return lethalNeighbours >= 3
 	}
 }
 
-fun lethalPositions(state: GameState): Set<Position>
+fun lethalPositions(state: GameState, self: Snake): Set<Position>
 {
 	return HashSet<Position>(totalSize(state.board)).apply {
 		addAll(snakePositions(state))
 		addAll(state.walls)
+
+		if(self.segments.size == 1)
+		{
+			val oppositeDirection = self.currentDirection.opposite()
+			val badPosition = self.headPosition going oppositeDirection
+			add(badPosition)
+		}
 	}
 }
 
@@ -93,21 +98,15 @@ fun calculateHighRiskPositions(state: GameState, self: Snake): Set<Position>
 	return positions
 }
 
-fun randomSafePosition(state: BoardState): Position
+fun randomSafePosition(state: BoardState): Sequence<Position>
 {
-	return randomPosition(state)
+	return randomPosition(state.state.board.width, state.state.board.height)
 			.filter{ !state.isLethal(it) }
 			.filter{ !state.isHighRisk(it) }
-			.first()
 }
 
-fun randomPosition(state: BoardState): Sequence<Position>
+fun randomPosition(width: Int, height: Int): Sequence<Position>
 {
-	return generateSequence()
-	{
-		val rand = Random()
-		val x = rand.nextInt(state.state.board.width)
-		val y = rand.nextInt(state.state.board.height)
-		Position(x, y)
-	}
+	val rand = Random()
+	return generateSequence(Position(rand.nextInt(width), rand.nextInt(height))) { Position(rand.nextInt(width), rand.nextInt(height)) }
 }
