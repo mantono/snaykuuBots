@@ -17,9 +17,9 @@ public class Graph
 {
 	private final boolean[][] matrix;
 
-	Graph(BoardAnalyzer analyzer)
+	Graph(BoardState state)
 	{
-		final Board board = analyzer.getBoard();
+		final Board board = state.getState().getBoard();
 		this.matrix = new boolean[board.getWidth()][board.getHeight()];
 
 		for(int y = 0; y < board.getHeight(); y++)
@@ -27,7 +27,7 @@ public class Graph
 			for(int x = 0; x < board.getWidth(); x++)
 			{
 				final Position pos = new Position(x, y);
-				if(!analyzer.isDangerous(pos))
+				if(!state.isDangerous(pos))
 					add(pos);
 			}
 		}
@@ -53,7 +53,7 @@ public class Graph
 		}
 	}
 
-	Deque<Direction> getBfsPath(Position from, Position to)
+	public Deque<Direction> bfsPath(Position from, Position to)
 	{
 		if(from.equals(to))
 			throw new IllegalArgumentException("Start and end node (" + to + ") cannot be the same.");
@@ -80,7 +80,6 @@ public class Graph
 			}
 		}
 		return null;
-
 	}
 
 	private List<Position> getConnectingNodesTo(Position currentNode)
