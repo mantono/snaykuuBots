@@ -49,3 +49,9 @@ data class ByteMatrix(val width: Int,
 		return sumOther - sumThis
 	}
 }
+
+fun populate(matrix: ByteMatrix, state: BoardState)
+{
+	state.nonEmptyPositions()
+			.forEach { matrix[it.x, it.y] = state.score(Position(it.x, it.y)) }
+}

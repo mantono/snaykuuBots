@@ -4,10 +4,8 @@ import gameLogic.*
 import java.util.*
 import java.util.stream.Collectors
 
-class BoardState(state: GameState, self: Snake)
+class BoardState(val state: GameState, val self: Snake)
 {
-	val self: Snake = self
-	val state: GameState = state
 	val walls: Set<Position> = HashSet(state.walls)
 	val lethalPositions: Set<Position> = lethalPositions(state, self)
 	val highRiskPositions: Set<Position> = calculateHighRiskPositions(state, self)
@@ -20,12 +18,13 @@ class BoardState(state: GameState, self: Snake)
 	fun hasFruit(position: Position): Boolean = position in fruits
 	fun isTrap(position: Position): Boolean = numberOfLethalNeighbours(position) >= 3
 	fun isTight(position: Position): Boolean = numberOfLethalNeighbours(position) >= 2
+	fun nonEmptyPositions(): Sequence<Position> = walls.asSequence() + snakesPositions.asSequence() + fruits.asSequence()
 
-	fun score(position: Position): Int = when(position)
+	fun score(position: Position): Byte = when(position)
 	{
 		this::isTrap -> -50
 		this::isHighRisk -> -5
-		this::isTight -> -1
+		this::isTight -> 0
 		this::hasFruit -> 5
 		else -> 1
 	}

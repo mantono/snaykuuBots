@@ -5,7 +5,7 @@ import java.util.*
 import kotlin.collections.HashSet
 
 
-class GraphBotK: Brain
+class GraphBot: Brain
 {
 	private var maxDepth = 4
 	init
@@ -43,7 +43,7 @@ class GraphBotK: Brain
 		val scores = TreeMap<Int, Direction>()
 		val visited: MutableSet<Position> = HashSet(maxDepth /4)
 
-		while(directions.isNotEmpty() && time.remaining() > 20)
+		while(directions.isNotEmpty())
 		{
 			val nextDirection: Direction = directions.poll()
 			val nextPosition: Position = current going nextDirection
@@ -53,7 +53,7 @@ class GraphBotK: Brain
 
 		val highScore: Int = scores.lastKey()
 		val bestDirection: Direction = scores[highScore] ?: initialDirection
-		println(bestDirection.toString() + "(" + highScore + ")")
+		println("${this::class.java.canonicalName}: $bestDirection ($highScore)")
 
 		return bestDirection
 	}
@@ -87,7 +87,7 @@ class GraphBotK: Brain
 
 		visited.add(current)
 
-		val scoreForThis: Int = state.score(current)
+		val scoreForThis: Byte = state.score(current)
 		val accumulatedScore: Int = score + scoreForThis
 
 		val highScore: Int = Direction.values()
@@ -107,10 +107,7 @@ class GraphBotK: Brain
 			return true
 
 		if(pathSize >= maxDepth)
-		{
-			println("Maximum path size reached: $pathSize")
 			return true
-		}
 
 		return false
 	}
