@@ -5,14 +5,20 @@ import java.util.*
 import kotlin.collections.HashSet
 
 
-private const val MAX_DEPTH = 1024
-
 class GraphBotK: Brain
 {
+	private var maxDepth = 4
+	init
+	{
+		System.out.println("\n\n*** BAM!! ***\n")
+		System.out.println("*** Version ${this::class.java.hashCode()} ***\n")
+	}
+
 	override fun getNextMove(self: Snake, gameState: GameState): Direction
 	{
 		try
 		{
+			maxDepth = maxStackDepth(self.segments.size)
 			val time = TimeTracker(gameState.metadata)
 			val state: BoardState = BoardState(gameState, self)
 			val graph = Graph(state)
@@ -35,7 +41,7 @@ class GraphBotK: Brain
 	{
 		val directions: Queue<Direction> = listOfDirections(initialDirection, currentDirection)
 		val scores = TreeMap<Int, Direction>()
-		val visited: MutableSet<Position> = HashSet(MAX_DEPTH/4)
+		val visited: MutableSet<Position> = HashSet(maxDepth /4)
 
 		while(directions.isNotEmpty() && time.remaining() > 20)
 		{
@@ -97,12 +103,17 @@ class GraphBotK: Brain
 
 	private fun reachedComputationCapacity(time: TimeTracker, pathSize: Int): Boolean
 	{
-		if(time.remaining() < 10)
+		if(time.remaining() < 15)
 			return true
 
-		if(pathSize >= MAX_DEPTH)
+		if(pathSize >= maxDepth)
+		{
+			println("Maximum path size reached: $pathSize")
 			return true
+		}
 
 		return false
 	}
 }
+
+fun maxStackDepth(snakeSize: Int): Int = 16 + (snakeSize * 1.5).toInt()

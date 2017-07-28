@@ -17,9 +17,9 @@ public class Graph
 {
 	private final boolean[][] matrix;
 
-	Graph(BoardState analyzer)
+	Graph(BoardState state)
 	{
-		final Board board = analyzer.getState().getBoard();
+		final Board board = state.getState().getBoard();
 		this.matrix = new boolean[board.getWidth()][board.getHeight()];
 
 		for(int y = 0; y < board.getHeight(); y++)
@@ -27,7 +27,7 @@ public class Graph
 			for(int x = 0; x < board.getWidth(); x++)
 			{
 				final Position pos = new Position(x, y);
-				if(!analyzer.isDangerous(pos))
+				if(!state.isDangerous(pos))
 					add(pos);
 			}
 		}

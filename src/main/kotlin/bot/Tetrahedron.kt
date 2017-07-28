@@ -11,19 +11,14 @@ class Tetrahedron: Brain
 		{
 			val myPos = self.headPosition
 
-			val optState = OptimizedState(self, state)
-			val matrix = ByteMatrix(state.board)
-			populate(matrix, optState)
-			val sqr: Position = bestSquare(matrix)
-
-			System.out.println("Found best square: $sqr")
 
 			val analyzer: BoardState = BoardState(state, self)
 			val graph: Graph = Graph(analyzer)
 
-			val path = graph.bfsPath(myPos, sqr)
-			val direction: Direction = path?.first ?: Direction.NORTH
-			return turn(myPos, direction, analyzer)
+			//val path = graph.bfsPath(myPos, sqr)
+			//val direction: Direction = path?.first ?: Direction.NORTH
+			//return turn(myPos, direction, analyzer)
+			return Direction.NORTH
 		}
 		catch(e: Exception)
 		{
