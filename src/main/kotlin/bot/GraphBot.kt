@@ -83,7 +83,7 @@ class GraphBot: Brain
 			return score
 
 		if(state.isLethal(current))
-			return score
+			return score - 10
 
 		visited.add(current)
 

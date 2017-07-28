@@ -24,9 +24,9 @@ class BoardState(val state: GameState, val self: Snake)
 	{
 		this::isTrap -> -50
 		this::isHighRisk -> -5
-		this::isTight -> 0
-		this::hasFruit -> 5
-		else -> 1
+		this::isTight -> 1
+		this::hasFruit -> 10
+		else -> 2
 	}
 
 	fun numberOfLethalNeighbours(position: Position): Int
