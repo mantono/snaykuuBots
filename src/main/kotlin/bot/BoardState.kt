@@ -82,6 +82,9 @@ fun calculateHighRiskPositions(state: GameState, self: Snake): Set<Position>
 	val positions = HashSet<Position>(otherSnakes.size * 4)
 	for (snake in otherSnakes)
 	{
+		if(snake.isDead)
+			continue
+
 		val head = snake.headPosition
 		val direction = snake.currentDirection
 
