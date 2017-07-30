@@ -11,6 +11,7 @@ class BoardState(val state: GameState, val self: Snake)
 	val highRiskPositions: Set<Position> = calculateHighRiskPositions(state, self)
 	val snakesPositions: Set<Position> = snakePositions(state)
 	val fruits: Set<Position> = HashSet(state.fruits)
+	val killingPositions: Set<Position> = killingOpportunities(state, self)
 
 	fun isLethal(position: Position): Boolean = position in lethalPositions
 	fun isHighRisk(position: Position): Boolean = position in highRiskPositions
@@ -18,6 +19,7 @@ class BoardState(val state: GameState, val self: Snake)
 	fun hasFruit(position: Position): Boolean = position in fruits
 	fun isTrap(position: Position): Boolean = numberOfLethalNeighbours(position) >= 3
 	fun isTight(position: Position): Boolean = numberOfLethalNeighbours(position) >= 2
+	fun isKillingOpportunity(position: Position): Boolean = position in killingPositions
 	fun nonEmptyPositions(): Sequence<Position> = walls.asSequence() + snakesPositions.asSequence() + fruits.asSequence()
 
 	fun score(position: Position): Byte = when(position)
@@ -26,6 +28,7 @@ class BoardState(val state: GameState, val self: Snake)
 		this::isHighRisk -> -5
 		this::isTight -> 1
 		this::hasFruit -> 10
+		this::isKillingOpportunity -> 20
 		else -> 2
 	}
 
@@ -70,6 +73,25 @@ fun livingEnemiesHeadPos(snakes: Set<Snake>, ownHead: Position): Set<Position>
 			.map { it.headPosition }
 			.collect(Collectors.toSet())
 }
+
+fun killingOpportunities(state: GameState, self: Snake): Set<Position>
+{
+	val left = self.headPosition going self.currentDirection.turnLeft()
+	val right = self.headPosition going self.currentDirection.turnLeft()
+
+	return state.snakes.asSequence()
+			.filter { it != self }
+			.filter { !it.isDead }
+			.filter { it.currentDirection == self.currentDirection }
+			.map { it.headPosition going it.currentDirection going it.currentDirection }
+			.filter { isValidPosition(state.board, it) }
+			.filter { it == left || it == right }
+			.toSet()
+}
+
+fun isValidPosition(board: Board, position: Position): Boolean = isValidX(board, position) && isValidY(board, position)
+fun isValidX(board: Board, position: Position): Boolean = position.x >= 0 && position.x < board.width
+fun isValidY(board: Board, position: Position): Boolean = position.y >= 0 && position.y < board.height
 
 fun totalSize(b: Board): Int = b.width * b.height
 fun playableSize(b: Board): Int = (b.width - 2) * (b.height - 2)
