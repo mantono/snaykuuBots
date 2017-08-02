@@ -12,7 +12,7 @@ class Tetrahedron: Brain
 			val myPos = self.headPosition
 
 			val optState = BoardState(state, self)
-			val matrix = ByteMatrix(state.board)
+			val matrix = Matrix<Byte>(state.board)
 			populate(matrix, optState)
 			val sqr: Position = bestSquare(matrix)
 
@@ -49,7 +49,7 @@ class Tetrahedron: Brain
 		return Direction.NORTH
 	}
 
-	tailrec fun bestSquare(matrix: ByteMatrix, bounds: Bounds = matrix.bounds): Position
+	tailrec fun bestSquare(matrix: Matrix<Byte>, bounds: Bounds = matrix.bounds): Position
 	{
 		if(bounds.isSingle)
 			return bounds.positions[0]
@@ -62,7 +62,7 @@ class Tetrahedron: Brain
 		return bestSquare(matrix, bestBounds)
 	}
 
-	private fun sequentialScore(matrix: ByteMatrix, subBounds: List<Bounds>): SortedMap<Int, Bounds>
+	private fun sequentialScore(matrix: Matrix<Byte>, subBounds: List<Bounds>): SortedMap<Int, Bounds>
 	{
 		val scores: SortedMap<Int, Bounds> = TreeMap(this::compareDescending)
 
@@ -85,7 +85,7 @@ class Tetrahedron: Brain
 	private fun compareDescending(a: Int, b: Int): Int = b - a
 }
 
-fun countScore(data: ByteMatrix, bounds: Bounds): Int
+fun countScore(data: Matrix<Byte>, bounds: Bounds): Int
 {
 	return bounds.asSequence()
 			.map {data[it]}
