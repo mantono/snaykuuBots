@@ -25,11 +25,11 @@ class BoardState(val state: GameState, val self: Snake)
 	fun score(position: Position): Byte = when(position)
 	{
 		this::isTrap -> -50
-		this::isHighRisk -> -5
-		this::isTight -> 1
+		this::isHighRisk -> 1
+		this::isTight -> 2
 		this::hasFruit -> 10
 		this::isKillingOpportunity -> 20
-		else -> 2
+		else -> 5
 	}
 
 	fun numberOfLethalNeighbours(position: Position): Int
