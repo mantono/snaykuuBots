@@ -1,24 +1,27 @@
 package bot
 
-import gameLogic.*
+import gameLogic.Board
+import gameLogic.Direction
+import gameLogic.GameState
+import gameLogic.Position
+import gameLogic.Snake
 import java.util.*
-import java.util.stream.Collectors
 
 class BoardState(val state: GameState, val self: Snake)
 {
 	val walls: Set<Position> = HashSet(state.walls)
-	val lethalPositions: Set<Position> = lethalPositions(state, self)
-	val highRiskPositions: Set<Position> = calculateHighRiskPositions(state, self)
+	val lethalPositions: Set<Position> by lazy { lethalPositions(state, self) }
+	val highRiskPositions: Set<Position> by lazy { calculateHighRiskPositions(state, self) }
 	val snakesPositions: Set<Position> = snakePositions(state)
-	val fruits: Set<Position> = HashSet(state.fruits)
-	val killingPositions: Set<Position> = killingOpportunities(state, self)
+	val fruits: Set<Position> = state.fruits.toSet()
+	val killingPositions: Set<Position> by lazy { killingOpportunities(state, self) }
+	val aliveSnakeTails: Set<Position> by lazy { livingEnemiesTailPos(state.snakes, self.tailPosition) }
 
 	fun isLethal(position: Position): Boolean = position in lethalPositions
 	fun isHighRisk(position: Position): Boolean = position in highRiskPositions
 	fun isDangerous(position: Position): Boolean = isLethal(position) || isHighRisk(position)
 	fun hasFruit(position: Position): Boolean = position in fruits
 	fun isTrap(position: Position): Boolean = numberOfLethalNeighbours(position) >= 3
-	fun isTight(position: Position): Boolean = numberOfLethalNeighbours(position) >= 2
 	fun isKillingOpportunity(position: Position): Boolean = position in killingPositions
 	fun nonEmptyPositions(): Sequence<Position> = walls.asSequence() + snakesPositions.asSequence() + fruits.asSequence()
 
@@ -30,6 +33,18 @@ class BoardState(val state: GameState, val self: Snake)
 		this::hasFruit -> 10
 		this::isKillingOpportunity -> 20
 		else -> 2
+	}
+
+	fun isTight(position: Position): Boolean
+	{
+		val up: Position = position going Direction.NORTH
+		val down: Position = position going Direction.SOUTH
+		if(isLethal(up) && isLethal(down))
+			return true
+
+		val left: Position = position going Direction.WEST
+		val right: Position = position going Direction.EAST
+		return isDangerous(left) && isLethal(right)
 	}
 
 	fun numberOfLethalNeighbours(position: Position): Int
@@ -51,8 +66,8 @@ fun lethalPositions(state: GameState, self: Snake): Set<Position>
 		if(self.segments.size == 1)
 		{
 			val oppositeDirection = self.currentDirection.opposite()
-			val badPosition = self.headPosition going oppositeDirection
-			add(badPosition)
+			val behindMe = self.headPosition going oppositeDirection
+			add(behindMe)
 		}
 	}
 }
@@ -67,11 +82,20 @@ fun snakePositions(state: GameState): Set<Position>
 
 fun livingEnemiesHeadPos(snakes: Set<Snake>, ownHead: Position): Set<Position>
 {
-	return snakes.stream()
+	return snakes.asSequence()
 			.filter { !it.isDead }
 			.filter { it.headPosition != ownHead }
 			.map { it.headPosition }
-			.collect(Collectors.toSet())
+			.toSet()
+}
+
+fun livingEnemiesTailPos(snakes: Set<Snake>, ownTail: Position): Set<Position>
+{
+	return snakes.asSequence()
+			.filter { !it.isDead }
+			.filter { it.tailPosition != ownTail }
+			.map { it.tailPosition }
+			.toSet()
 }
 
 fun killingOpportunities(state: GameState, self: Snake): Set<Position>

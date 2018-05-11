@@ -3,8 +3,7 @@ package bot
 import gameLogic.Board
 import gameLogic.Position
 
-data class Matrix<T: Number>(val width: Int,
-                  val height: Int) : Comparable<Matrix<T>>
+data class Matrix<T>(val width: Int, val height: Int)
 {
 	private val data: MutableList<T> = ArrayList(width * height)
 	val size: Int = data.size
@@ -46,17 +45,10 @@ data class Matrix<T: Number>(val width: Int,
 	}
 
 	fun asSequence(): Sequence<T> = data.asSequence()
-
-	override fun compareTo(other: Matrix<T>): Int
-	{
-		val sumThis = this.asSequence().sumBy { it.toInt() }
-		val sumOther = other.asSequence().sumBy { it.toInt() }
-		return sumOther - sumThis
-	}
 }
 
-fun <T: Number>populate(matrix: Matrix<T>, state: BoardState)
+fun populate(matrix: Matrix<Byte>, state: BoardState)
 {
-	state.nonEmptyPositions()
-			.forEach { matrix[it.x, it.y] = state.score(Position(it.x, it.y)) as T }
+	state.state.board.asSequnce()
+			.forEach { matrix[it] = categorize(state, it).score}
 }

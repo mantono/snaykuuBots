@@ -153,7 +153,7 @@ public class AderaistBot implements Brain
 	{
 		Board board = gamestate.getBoard();
 		// A lethal wall covers the edges of the board. The wall is one square 
-		// wide. A marign of one square is therefore needed to not collide with 
+		// wide. A margin of one square is therefore needed to not collide with
 		// the wall.
 		if(position.getX() < 1 || position.getY() < 1)
 			return true;
