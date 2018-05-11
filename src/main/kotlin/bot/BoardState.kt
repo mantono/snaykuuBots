@@ -51,8 +51,8 @@ fun lethalPositions(state: GameState, self: Snake): Set<Position>
 		if(self.segments.size == 1)
 		{
 			val oppositeDirection = self.currentDirection.opposite()
-			val badPosition = self.headPosition going oppositeDirection
-			add(badPosition)
+			val behindMe = self.headPosition going oppositeDirection
+			add(behindMe)
 		}
 	}
 }
@@ -67,11 +67,20 @@ fun snakePositions(state: GameState): Set<Position>
 
 fun livingEnemiesHeadPos(snakes: Set<Snake>, ownHead: Position): Set<Position>
 {
-	return snakes.stream()
+	return snakes.asSequence()
 			.filter { !it.isDead }
 			.filter { it.headPosition != ownHead }
 			.map { it.headPosition }
-			.collect(Collectors.toSet())
+			.toSet()
+}
+
+fun livingEnemiesTailPos(snakes: Set<Snake>, ownTail: Position): Set<Position>
+{
+	return snakes.asSequence()
+			.filter { !it.isDead }
+			.filter { it.tailPosition != ownTail }
+			.map { it.tailPosition }
+			.toSet()
 }
 
 fun killingOpportunities(state: GameState, self: Snake): Set<Position>

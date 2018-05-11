@@ -29,9 +29,9 @@ apply plugin: "org.junit.platform.gradle.plugin"
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib-jre8', version: kotlin_version
-    compile 'xanindorf:aaah-snaykuu:1.0'
-    compile 'xanindorf:aaah-snaykuu:1.0:javadoc'
-    compile 'xanindorf:aaah-snaykuu:1.0:sources'
+    implementation 'com.github.mantono:aaah-snaykuu:33ac96213e'
+    implementation 'com.github.mantono:aaah-snaykuu:33ac96213e:javadoc'
+    implementation 'com.github.mantono:aaah-snaykuu:33ac96213e:sources'
     compile 'org.slf4j:slf4j-simple:1.7.21'
     compile 'io.github.microutils:kotlin-logging:1.4.5'
     testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.0-M4'
@@ -101,5 +101,5 @@ task copy(type: Copy, dependsOn: build) {
 
 task wrapper(type: Wrapper) {
     description = 'Generates gradlew[.bat] scripts for faster execution'
-    gradleVersion = '4.0'
+    gradleVersion = '4.7'
 }

@@ -7,7 +7,8 @@ import kotlin.collections.HashSet
 
 class GraphBot: Brain
 {
-	private var maxDepth = 4
+	private var memory: Matrix<Double> = Matrix(1, 1, 0.0)
+	private val maxDepth = 256
 	init
 	{
 		System.out.println("\n\n*** BAM!! ***\n")
@@ -18,7 +19,13 @@ class GraphBot: Brain
 	{
 		try
 		{
-			maxDepth = maxStackDepth(self.segments.size)
+			if(memory.size == 1)
+				memory = Matrix<Double>(gameState.board)
+
+			println("Before forgetting: $memory")
+			forget(memory)
+			memory[self.headPosition] = -1.0
+
 			val time = TimeTracker(gameState.metadata)
 			val state: BoardState = BoardState(gameState, self)
 			val graph = Graph(state)
@@ -26,7 +33,7 @@ class GraphBot: Brain
 			val fruits = rankFruits(state, self.headPosition)
 			val firstDirectionToEvaluate = initialDirection(graph, fruits, state, self)
 			val from = self.headPosition
-			val direction = bestDirection(firstDirectionToEvaluate, self.currentDirection, from, state, time)
+			val direction = bestDirection(firstDirectionToEvaluate, self.currentDirection, from, state, time, memory)
 			return direction
 		}
 		catch(e: Exception)
@@ -37,7 +44,16 @@ class GraphBot: Brain
 		return self.currentDirection.turnLeft()
 	}
 
-	private fun bestDirection(initialDirection: Direction, currentDirection: Direction, current: Position, state: BoardState, time: TimeTracker): Direction
+	private fun forget(memory: Matrix<Double>)
+	{
+		memory.indices.asSequence()
+				.filter { memory[it] != 0.0 }
+				.forEach { memory[it] = reduce(memory[it]) }
+	}
+
+	private fun reduce(i: Double): Double = i/10.0
+
+	private fun bestDirection(initialDirection: Direction, currentDirection: Direction, current: Position, state: BoardState, time: TimeTracker, memory: Matrix<Double>): Direction
 	{
 		val directions: Queue<Direction> = listOfDirections(initialDirection, currentDirection)
 		val scores = TreeMap<Int, Direction>()
@@ -47,7 +63,7 @@ class GraphBot: Brain
 		{
 			val nextDirection: Direction = directions.poll()
 			val nextPosition: Position = current going nextDirection
-			val score = getScore(visited, nextPosition, state, time)
+			val score = getScore(visited, nextPosition, state, time, memory)
 			scores.put(score, nextDirection)
 		}
 
@@ -74,7 +90,7 @@ class GraphBot: Brain
 		return q
 	}
 
-	private fun getScore(visited: MutableSet<Position>, current: Position, state: BoardState, time: TimeTracker, score: Int = 0): Int
+	private fun getScore(visited: MutableSet<Position>, current: Position, state: BoardState, time: TimeTracker, memory: Matrix<Double>, score: Int = 0): Int
 	{
 		if(current in visited)
 			return score
@@ -89,16 +105,33 @@ class GraphBot: Brain
 
 		val scoreForThis: Byte = state.score(current)
 		val accumulatedScore: Int = score + scoreForThis
-
-		val highScore: Int = Direction.values()
+		val highScore: Int = directions(current, memory)
 				.asSequence()
 				.map { current going it }
-				.map { getScore(visited, it, state, time, accumulatedScore) }
+				.map { getScore(visited, it, state, time, memory, accumulatedScore) }
 				.max() ?: accumulatedScore
 
+		memory[current] = updateMemory(current, memory, highScore)
 		visited.remove(current)
 
 		return highScore
+	}
+
+	private fun updateMemory(current: Position, memory: Matrix<Double>, accumulatedScore: Int): Double
+	{
+		val inMemory = memory[current]
+
+		if(Math.abs(inMemory) > Math.abs(accumulatedScore))
+			return inMemory
+		return accumulatedScore.toDouble()
+	}
+
+	private fun directions(current: Position, memory: Matrix<Double>): Sequence<Direction>
+	{
+		return Direction.values().asSequence()
+				.map { it to (current going it) }
+				.sortedByDescending { memory[it.second] }
+				.map { it.first }
 	}
 
 	private fun reachedComputationCapacity(time: TimeTracker, pathSize: Int): Boolean

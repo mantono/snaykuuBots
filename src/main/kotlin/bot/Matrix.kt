@@ -4,13 +4,21 @@ import gameLogic.Board
 import gameLogic.Position
 
 data class Matrix<T: Number>(val width: Int,
-                  val height: Int) : Comparable<Matrix<T>>
+                  val height: Int, private val initialValue: T) : Comparable<Matrix<T>>
 {
 	private val data: MutableList<T> = ArrayList(width * height)
-	val size: Int = data.size
+	val size: Int = width * height
 	val bounds: Bounds = Bounds(0, 0, width - 1, height - 1)
+	val indices: IntRange by lazy { data.indices }
 
-	constructor(board: Board): this(board.width, board.height)
+	constructor(board: Board): this(board.width, board.height, 0 as T)
+
+	init
+	{
+		for(i in 0 until size)
+			data.add(i, initialValue)
+		assert(data.size == size)
+	}
 
 	private inline fun indexOf(x: Int, y: Int): Int = x + (y * width)
 
@@ -22,6 +30,8 @@ data class Matrix<T: Number>(val width: Int,
 		val i = indexOf(x, y)
 		return data[i]
 	}
+
+	operator fun get(i: Int): T = data[i]
 
 	operator fun set(p: Position, score: T) = set(p.x, p.y, score)
 
@@ -53,10 +63,25 @@ data class Matrix<T: Number>(val width: Int,
 		val sumOther = other.asSequence().sumBy { it.toInt() }
 		return sumOther - sumThis
 	}
+
+	override fun toString(): String
+	{
+		return data.asSequence()
+				.mapIndexed{ index, value -> "${value.round(2)}" + if(index % width == width - 1) "\n" else ", " }
+				.joinToString(separator = "")
+	}
 }
 
 fun <T: Number>populate(matrix: Matrix<T>, state: BoardState)
 {
 	state.nonEmptyPositions()
 			.forEach { matrix[it.x, it.y] = state.score(Position(it.x, it.y)) as T }
+}
+
+fun Number.round(decimals: Int): Double
+{
+	val roundingFactor = Math.pow(10.0, decimals.toDouble())
+	val multiplied = this.toDouble() * roundingFactor
+	val rounded = Math.round(multiplied)
+	return rounded / roundingFactor
 }
